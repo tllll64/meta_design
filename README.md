@@ -1,57 +1,47 @@
-# React + TypeScript + Vite
+# meta_design
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+毕设原型代码仓库：React 前端 + Node.js（Express）后端。
 
-Currently, two official plugins are available:
+## 目录结构
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- `src/`：前端（React + Vite）
+- `api/`：后端（Express）
+- `.trae/documents/`：草稿阶段文档（PRD / 技术架构）
+- `proposal.md`：中期 proposal（研究背景与研究问题）
+- `test.html`：草稿实验页（保留用于快速验证想法）
 
-## Expanding the ESLint configuration
+## 本地开发
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+安装依赖：
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+启动前端 + 后端（并行）：
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+npm run dev
+```
 
-export default tseslint.config({
-  extends: [
-    // other configs...
-    // Enable lint rules for React
-    reactX.configs['recommended-typescript'],
-    // Enable lint rules for React DOM
-    reactDom.configs.recommended,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+默认端口：
+
+- 前端：http://localhost:5173
+- 后端：http://localhost:3001
+
+前端通过 Vite 代理请求后端：
+
+- 访问 `http://localhost:5173/`，页面会自动请求 `GET /api/health` 并展示结果
+
+### 常见问题
+
+- 浏览器显示“服务不可用”（打不开 `http://localhost:5173/`）：说明前端开发服务器没有在运行。
+  - 在项目目录执行 `npm run dev` 并保持终端进程不要退出
+  - 以终端输出的 `Local: http://localhost:xxxx/` 为准（如果 5173 被占用，Vite 会自动换端口）
+
+## 常用命令
+
+```bash
+npm run check
+npm run lint
 ```
