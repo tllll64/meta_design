@@ -6,9 +6,9 @@
 
 - `src/`：前端（React + Vite）
 - `api/`：后端（Express）
-- `.trae/documents/`：草稿阶段文档（PRD / 技术架构）
-- `proposal.md`：中期 proposal（研究背景与研究问题）
-- `test.html`：草稿实验页（保留用于快速验证想法）
+- `.trae/documents/`：草稿阶段文档（`slides/` 演示稿文档、`midterm-demo/` 中期 demo 文档）
+- `Midterm/`：中期相关材料
+- `Proposal/`：开题相关材料
 
 ## 本地开发
 
@@ -22,6 +22,18 @@ npm install
 
 ```bash
 npm run dev
+```
+
+运行入口（中期 demo / 最终版本）：
+
+- 默认运行中期 demo：`VITE_APP_MODE=demo`
+- 运行最终版本入口：`VITE_APP_MODE=product`
+
+示例：
+
+```bash
+VITE_APP_MODE=demo npm run dev
+VITE_APP_MODE=product npm run dev
 ```
 
 默认端口：

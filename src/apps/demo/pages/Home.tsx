@@ -39,9 +39,9 @@ export default function Home() {
       <div className="mx-auto max-w-3xl px-6 py-12">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight">Meta Design · 原型骨架</h1>
+            <h1 className="text-lg font-semibold tracking-tight">Meta Design · 中期 Demo 骨架</h1>
             <p className="mt-2 text-sm text-zinc-400">
-              这是最小可运行的 React + Node.js（Express）骨架：前端通过 Vite 代理调用后端 <span className="font-mono">/api/health</span>。
+              这是中期 Demo 的最小可运行骨架：前端通过 Vite 代理调用后端 <span className="font-mono">/api/health</span>。
             </p>
           </div>
           <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs ${badge.cls}`}>{badge.label}</span>
@@ -85,25 +85,14 @@ export default function Home() {
                 <pre className="overflow-auto rounded-xl border border-rose-500/20 bg-rose-500/10 p-4 text-xs text-rose-100">
                   {state.message}
                 </pre>
-                <div className="text-xs text-zinc-400">
-                  常见原因：后端未启动 / 端口不一致 / 代理未生效。
-                </div>
               </div>
             )}
 
             {state.status === 'idle' && <div className="text-sm text-zinc-400">点击“重新检测”开始。</div>}
           </div>
         </div>
-
-        <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
-          <div className="text-sm font-medium">下一步你可以做什么</div>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-zinc-300">
-            <li>把 <span className="font-mono">/api/health</span> 替换成你的业务 API（项目/生成/导出）。</li>
-            <li>把 <span className="font-mono">proposal.md</span> 的研究问题落到页面与数据模型上。</li>
-            <li>继续用 <span className="font-mono">test.html</span> 做交互/能力验证草稿。</li>
-          </ul>
-        </div>
       </div>
     </div>
   );
 }
+
