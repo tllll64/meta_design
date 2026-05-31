@@ -1,7 +1,41 @@
-export type HealthResponse = {
-  success: boolean;
+export type ApiErrorBody = {
+  code: string;
   message: string;
 };
+
+export type ApiSuccess<T> = {
+  success: true;
+  data: T;
+};
+
+export type ApiFailure = {
+  success: false;
+  error: ApiErrorBody;
+};
+
+export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
+
+export type HealthResponse = {
+  message: string;
+  service: string;
+};
+
+async function parseApiResponse<T>(res: Response): Promise<T> {
+  const json = (await res.json()) as ApiResponse<T>;
+
+  if (!res.ok) {
+    if (!json.success && 'error' in json) {
+      throw new Error(`${json.error.code}: ${json.error.message}`);
+    }
+    throw new Error(`HTTP ${res.status}`);
+  }
+
+  if (!json.success && 'error' in json) {
+    throw new Error(`${json.error.code}: ${json.error.message}`);
+  }
+
+  return json.data;
+}
 
 export async function getHealth(): Promise<HealthResponse> {
   const res = await fetch('/api/health', {
@@ -11,11 +45,5 @@ export async function getHealth(): Promise<HealthResponse> {
     },
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`HTTP ${res.status}: ${text}`);
-  }
-
-  return (await res.json()) as HealthResponse;
+  return parseApiResponse<HealthResponse>(res);
 }
-
