@@ -43,16 +43,35 @@
 
 - `src/`：前端应用（React 组件、页面、路由、状态）
 - `api/`：后端服务（Express 路由、业务逻辑、未来可扩展数据访问层）
-- `.trae/documents/`：草稿文档（`slides/` 演示稿文档、`midterm-demo/` 中期 demo 文档）
-- `Midterm/midterm proposal.md`：研究稿（背景、研究问题等）
+- `.trae/documents/slides/`：演示稿文档
+- `.trae/documents/midterm-demo/`：中期 demo 相关草稿
+- `.trae/documents/learning/`：学习记录与技术笔记
+- `Midterm/`：中期相关材料
+- `Proposal/`：开题相关材料
+
+边界说明：
+
+- `.trae/documents/` 只放过程文档、草稿和学习记录，不放正式业务代码
+- `Midterm/` 只放中期答辩相关材料
+- `Proposal/` 只放开题相关材料
+- 项目真实可运行代码只放在 `src/` 与 `api/`
 
 ## 3. 可执行的初始化清单（推荐顺序）
 
 ### 3.1 工程质量底座
 
-- [ ] 固定格式化与代码规范（ESLint/TS 配置确认）
-- [ ] 增加 `prettier`（可选，但通常对团队/长期很有帮助）
+- [x] 固定格式化与代码规范（已确认 `ESLint + TypeScript` 可作为当前底座）
+- [x] 增加 `prettier`
 - [ ] 增加 `lint-staged` + `husky`（可选：commit 前自动检查）
+
+当前说明：
+
+- 当前项目已经具备 `eslint.config.js` 与 `tsconfig.json`
+- 当前项目已补充 `Prettier`，并提供：
+  - `npm run format`
+  - `npm run format:check`
+- 当前仓库还没有做一次全量 `Prettier` 格式化，后续可在合适时机统一整理，避免现在引入大面积无关 diff
+- `husky` / `lint-staged` 目前继续保持可选，等后续提交频率更高或进入多人协作再考虑
 
 ### 3.2 环境变量与配置约定（先不填 Key）
 
@@ -93,8 +112,9 @@
 ### 3.4 数据落地策略（先定方向）
 
 - [x] 选择数据层：当前推荐并暂定为 `SQLite`
-- [x] 明确迁移策略：
-  - SQLite：是否使用迁移工具（例如 drizzle/prisma/knex）
+- [x] 明确迁移策略：使用 migration
+- [x] 明确数据库工具：当前推荐并暂定为 `Drizzle`
+- [ ] 最小数据表设计：当前仅保留占位草案，后续根据 PRD 再确定
 
 当前决定说明：
 
@@ -102,6 +122,8 @@
 - 纯 mock 不足以支撑“记录生成过程 / 保留实验结果 / 版本对比”这类演示需求
 - JSON 文件适合做模板和 seed 数据，但不适合作为主要存储层
 - `SQLite` 最适合当前阶段：本地轻量、可演示、后续可迁移到最终版本
+- 迁移工具采用 `migration`，目的是让每次数据库结构变更都有记录，后续更稳
+- 数据库工具优先采用 `Drizzle`：相对轻量，适合 `React + Node.js + SQLite` 这条技术路线，也更适合继续沿用到最终项目
 
 当前建议的推进节奏：
 
@@ -109,10 +131,97 @@
 - 一旦 3 个核心数据名词明确，就优先把最小数据结构落到 `SQLite`
 - 第一阶段只需要最少量的数据表，不急着一开始做完整数据库设计
 
+当前暂定方案（一句话版）：
+
+- 主存储层：`SQLite`
+- 数据库工具：`Drizzle`
+- 结构变更记录方式：`migration`
+
+#### 3.4.1 最小数据表草案（仅作占位参考，后续再定）
+
+说明：你目前对数据库表还没有明确概念，所以这一部分先不视为正式决定。下面的内容只用于帮助后续讨论，不作为立即实施的约束。
+
+1. `projects`
+
+- 作用：代表一个设计任务 / 一个工作空间
+- 最少建议保存：
+  - `id`：项目唯一标识
+  - `title`：项目名称
+  - `description`：项目说明（可先简单）
+  - `created_at`：创建时间
+  - `updated_at`：最后更新时间
+
+2. `rulesets`
+
+- 作用：代表一组元设计规则 / 一次规则定义
+- 它应该属于某个 `project`
+- 最少建议保存：
+  - `id`：规则集唯一标识
+  - `project_id`：它属于哪个项目
+  - `name`：规则集名称
+  - `intent_summary`：设计意图摘要
+  - `rules_json`：规则主体内容（前期可以先用 JSON 结构存）
+  - `version`：规则版本号
+  - `created_at`：创建时间
+
+3. `generations`
+
+- 作用：代表一次生成尝试 / 一条实验记录
+- 它通常和某个 `project`、某个 `ruleset` 有关系
+- 最少建议保存：
+  - `id`：生成记录唯一标识
+  - `project_id`：属于哪个项目
+  - `ruleset_id`：基于哪套规则生成
+  - `prompt_snapshot`：本次生成时实际使用的输入快照
+  - `result_summary`：生成结果摘要
+  - `provider`：调用的是哪一层服务（例如 `packycode`）
+  - `model`：当时使用的模型名
+  - `status`：成功 / 失败 / 待处理
+  - `created_at`：生成时间
+
+为什么先把范围缩到这 3 类：
+
+- `projects` 让你能区分不同设计任务
+- `rulesets` 对应你的“元设计内容”
+- `generations` 对应你的“生成行为与实验记录”
+- 这 3 类只是当前最容易理解的占位参考，不代表最终一定这样拆表
+- 后面如果 PRD 改了，也可以换成别的拆分方式
+
 ### 3.5 演示与发布（可选）
 
-- [ ] 选定演示部署方式（Vercel/Render/Fly.io/自建）
+- [x] 确定子域名分工：中期 demo 与最终原型使用同一主域名下的不同子域名
+- [ ] 选定具体部署平台（当前暂缓，等 PRD 与中期 demo 结构更明确后再定）
 - [ ] 确定“答辩演示路径”：打开首页 → 进入工作台 → 编辑规则 → 触发生成/模拟生成 → 导出
+
+当前阶段说明：
+
+- 现在先不做正式部署绑定
+- 等 PRD、核心页面和演示范围更清楚后，再决定部署平台
+- 正式绑定 `midterm` / `final` 子域名前，还需要补充真实主域名、DNS 托管信息和平台访问权限
+- 如果后面需要提前线上预览，可以先使用部署平台提供的默认地址，确认稳定后再绑定自己的域名
+
+当前推荐的子域名方案：
+
+- `midterm.yourdomain.com`
+  - 用于中期 demo
+  - 强调“研究中期验证版 / 交互与机制演示”
+- `final.yourdomain.com`
+  - 用于最终原型
+  - 强调“最终系统版本 / 更完整的工作流呈现”
+
+英文描述建议（可用于页面标题、副标题、部署说明）：
+
+- `midterm.yourdomain.com`
+  - Title: `Midterm Prototype`
+  - Description: `A midterm prototype for my graduation project, exploring meta-design-driven human-AI collaboration in information design.`
+
+- `final.yourdomain.com`
+  - Title: `Final Prototype`
+  - Description: `A final prototype for my graduation project, presenting a meta-design-driven system for human-AI collaboration in information design.`
+
+如果后面需要更偏学术表达，也可以使用这一版总描述：
+
+- `This project explores a meta-design-driven approach to human-AI collaboration for information design artifacts.`
 
 ## 4. 等 PRD 更明确后再做的内容（先记下来）
 
@@ -139,4 +248,7 @@
 - 启动 3.2 环境变量与配置约定：补全 `.env.example`，将配置项改为贴合 `PackyCode` 的结构，并让后端实际读取 `CORS_ORIGIN`
 - 完成 3.3 API 规范底座：后端统一返回 `{ success, data, error }` 结构，增加开发态请求日志、404/500 规范错误体，并同步前端请求解析逻辑
 - 初步确认 3.4 数据落地方向：中期 demo 虽然只使用少量后端，但主存储层仍优先采用 `SQLite`；`JSON` 更适合作为模板/seed 数据，不作为主要落地方案
-
+- 正式确认数据库线的暂定方案为 `SQLite + Drizzle + migration`，并补充最小 3 张表草案：`projects`、`rulesets`、`generations`
+- 补充说明：最小 3 张表目前只作为帮助理解的占位草案，不视为正式拍板；等 PRD 和核心数据对象更清楚后再最终确定
+- 确认发布域名策略：中期与最终原型共用主域名，但拆分为 `midterm` / `final` 两个子域名；同时补充了可直接使用的英文毕设描述
+- 补充轻量初始化：确认 `ESLint + TypeScript` 可作为当前工程质量底座，新增 `Prettier` 与格式化命令，并整理 `README` 和文档目录边界说明
