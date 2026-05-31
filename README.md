@@ -13,7 +13,7 @@
 - `api/`：后端服务与基础 API
 - `.trae/documents/slides/`：演示稿相关文档
 - `.trae/documents/midterm-demo/`：中期 demo 相关草稿
-- `.trae/documents/learning/`：学习记录与技术笔记
+- `.trae/documents/learning/`：学习记录、技术笔记与对话历史摘要
 - `Midterm/`：中期相关材料
 - `Proposal/`：开题相关材料
 - `INIT_WORK.md`：初始化工作记录与阶段性决策

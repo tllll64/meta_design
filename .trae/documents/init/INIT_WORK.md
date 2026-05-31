@@ -45,7 +45,7 @@
 - `api/`：后端服务（Express 路由、业务逻辑、未来可扩展数据访问层）
 - `.trae/documents/slides/`：演示稿文档
 - `.trae/documents/midterm-demo/`：中期 demo 相关草稿
-- `.trae/documents/learning/`：学习记录与技术笔记
+- `.trae/documents/learning/`：学习记录、技术笔记与对话历史摘要
 - `Midterm/`：中期相关材料
 - `Proposal/`：开题相关材料
 
@@ -251,4 +251,4 @@
 - 正式确认数据库线的暂定方案为 `SQLite + Drizzle + migration`，并补充最小 3 张表草案：`projects`、`rulesets`、`generations`
 - 补充说明：最小 3 张表目前只作为帮助理解的占位草案，不视为正式拍板；等 PRD 和核心数据对象更清楚后再最终确定
 - 确认发布域名策略：中期与最终原型共用主域名，但拆分为 `midterm` / `final` 两个子域名；同时补充了可直接使用的英文毕设描述
-- 补充轻量初始化：确认 `ESLint + TypeScript` 可作为当前工程质量底座，新增 `Prettier` 与格式化命令，并整理 `README` 和文档目录边界说明
+- 新增对话历史摘要文档：将本轮对齐的重要事件收拢到 `.trae/documents/learning/对话对齐历史记录.md`，作为后续继续讨论的记忆入口
