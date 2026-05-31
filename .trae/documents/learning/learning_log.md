@@ -61,3 +61,9 @@
 ### Q: 能不能把速筛问卷整理成一个 Markdown 文档？
 
 - A: 可以。我已把“信息设计线上访谈速筛问卷（11题，含跳转逻辑与必填建议）”整理为独立 Markdown 文件，方便你直接复制到问卷星/飞书问卷里使用：`/.trae/documents/task/Interview_Screener_Questionnaire.md`。
+
+### Q: 能不能链接飞书 MCP 自动生成一份问卷？
+
+- A: 当前项目里没有现成的飞书/Feishu MCP 或 OpenAPI 自动化集成，因此我没法在这里直接“连飞书自动建问卷”。我已经提供了一份飞书问卷搭建清单，按步骤复制粘贴即可快速搭完：`/.trae/documents/task/Feishu_Questionnaire_Setup_Guide.md`。
+
+
