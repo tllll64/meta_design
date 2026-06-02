@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meta-design Problem Hierarchy</title>
+    <style>
+      :root {
+        --bg: #f4efe6;
+        --paper: rgba(255, 252, 247, 0.9);
+        --ink: #1d1b18;
+        --muted: #686258;
+        --line: rgba(50, 43, 32, 0.12);
+        --accent: #ba5a36;
+        --accent-soft: rgba(186, 90, 54, 0.12);
+        --accent-strong: #884122;
+        --olive: #52624c;
+        --olive-soft: rgba(82, 98, 76, 0.12);
+        --shadow: 0 18px 40px rgba(62, 48, 31, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "PingFang SC", "Noto Sans SC", "Helvetica Neue", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(186, 90, 54, 0.12), transparent 30%),
+          radial-gradient(circle at right 20%, rgba(82, 98, 76, 0.14), transparent 24%),
+          linear-gradient(180deg, #f8f4ed 0%, var(--bg) 100%);
+      }
+
+      .page {
+        width: min(1240px, calc(100vw - 40px));
+        margin: 0 auto;
+        padding: 48px 0 56px;
+      }
+
+      .hero {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 28px;
+      }
+
+      .eyebrow {
+        width: fit-content;
+        padding: 7px 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.55);
+        color: var(--accent-strong);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+      }
+
+      h1 {
+        margin: 0;
+        font-family: "Times New Roman", "Songti SC", serif;
+        font-size: clamp(36px, 5vw, 56px);
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+      }
+
+      .subtitle {
+        max-width: 860px;
+        margin: 0;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.75;
+      }
+
+      .board {
+        position: relative;
+        display: grid;
+        gap: 26px;
+      }
+
+      .layer-label {
+        margin: 0 0 12px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .core-card,
+      .bridge-card,
+      .symptom-card,
+      .thesis-card {
+        border: 1px solid var(--line);
+        background: var(--paper);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(10px);
+      }
+
+      .core-card {
+        position: relative;
+        overflow: hidden;
+        padding: 28px 30px 30px;
+        border-radius: 30px;
+      }
+
+      .core-card::after {
+        content: "";
+        position: absolute;
+        inset: auto -40px -40px auto;
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        background: var(--accent-soft);
+      }
+
+      .core-title {
+        margin: 0 0 10px;
+        font-size: clamp(26px, 3vw, 38px);
+        line-height: 1.2;
+      }
+
+      .core-note {
+        max-width: 820px;
+        margin: 0;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.8;
+      }
+
+      .bridge-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .bridge-card {
+        padding: 20px;
+        border-radius: 24px;
+      }
+
+      .bridge-card:nth-child(1) {
+        background: linear-gradient(180deg, rgba(186, 90, 54, 0.12), rgba(255, 252, 247, 0.92));
+      }
+
+      .bridge-card:nth-child(2) {
+        background: linear-gradient(180deg, rgba(82, 98, 76, 0.14), rgba(255, 252, 247, 0.92));
+      }
+
+      .bridge-card:nth-child(3) {
+        background: linear-gradient(180deg, rgba(32, 66, 93, 0.12), rgba(255, 252, 247, 0.92));
+      }
+
+      .bridge-card h2 {
+        margin: 0 0 8px;
+        font-size: 22px;
+      }
+
+      .bridge-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.75;
+      }
+
+      .symptom-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .symptom-card {
+        position: relative;
+        padding: 18px 16px 20px;
+        border-radius: 22px;
+      }
+
+      .symptom-index {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        margin-bottom: 12px;
+        border-radius: 50%;
+        background: var(--accent-soft);
+        color: var(--accent-strong);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .symptom-card h3 {
+        margin: 0 0 10px;
+        font-size: 18px;
+        line-height: 1.35;
+      }
+
+      .symptom-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.75;
+      }
+
+      .thesis-card {
+        display: grid;
+        grid-template-columns: 160px 1fr;
+        gap: 18px;
+        align-items: start;
+        padding: 22px 24px;
+        border-radius: 26px;
+      }
+
+      .thesis-label {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 54px;
+        padding: 0 18px;
+        border-radius: 16px;
+        background: #1d1b18;
+        color: #f6f2ea;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+      }
+
+      .thesis-card p {
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.8;
+      }
+
+      .accent {
+        color: var(--accent-strong);
+        font-weight: 700;
+      }
+
+      .connector {
+        position: absolute;
+        left: 50%;
+        top: 190px;
+        bottom: 196px;
+        width: 2px;
+        background: linear-gradient(180deg, rgba(136, 65, 34, 0.35), rgba(136, 65, 34, 0.08));
+        transform: translateX(-50%);
+        pointer-events: none;
+      }
+
+      .connector::before,
+      .connector::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--accent);
+        transform: translate(-50%, 0);
+      }
+
+      .connector::before {
+        top: 20px;
+      }
+
+      .connector::after {
+        bottom: 20px;
+      }
+
+      @media (max-width: 1100px) {
+        .symptom-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 860px) {
+        .page {
+          width: min(100vw - 24px, 720px);
+          padding: 24px 0 40px;
+        }
+
+        .connector {
+          display: none;
+        }
+
+        .bridge-grid,
+        .symptom-grid,
+        .thesis-card {
+          grid-template-columns: 1fr;
+        }
+
+        .thesis-card {
+          gap: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <div class="eyebrow">META-DESIGN / PROBLEM MAP</div>
+        <h1>这些问题的上层核心，确实是<br />设计师对 AI 协作机制的主动权不足</h1>
+        <p class="subtitle">
+          你的五个观察并不是彼此孤立的痛点，它们更像是同一个核心矛盾在不同层面的表现。
+          与其说只是“个性化不够”，不如更准确地说，是设计师缺少把自己的意图、判断、流程与规则
+          <span class="accent">主动嵌入 AI 协作</span> 的能力。
+        </p>
+      </header>
+
+      <section class="board" aria-label="problem hierarchy">
+        <div class="connector" aria-hidden="true"></div>
+
+        <div>
+          <p class="layer-label">Top Layer / 核心问题</p>
+          <article class="core-card">
+            <h2 class="core-title">设计师缺乏主动定义与调整 AI 协作机制的能力</h2>
+            <p class="core-note">
+              问题不只是“AI 不够聪明”，而是当前协作模式默认由系统、模板或预设 Skill 决定流程，
+              设计师往往只能在结果出来后反复修补，却很难在生成之前与生成之中持续施加自己的方法与判断。
+            </p>
+          </article>
+        </div>
+
+        <div>
+          <p class="layer-label">Middle Layer / 中间关键词</p>
+          <div class="bridge-grid">
+            <article class="bridge-card">
+              <h2>主动权</h2>
+              <p>
+                设计师不该只是提需求的人，还应该是能够设定协作方式、决定系统如何回应自己的人。
+              </p>
+            </article>
+            <article class="bridge-card">
+              <h2>过程控制权</h2>
+              <p>
+                真正的控制不只发生在最后挑结果，而是体现在规则、步骤、判断标准都可以被持续调整。
+              </p>
+            </article>
+            <article class="bridge-card">
+              <h2>个性化协作机制</h2>
+              <p>
+                重点不是单纯保留风格偏好，而是让设计师自己的工作方法、逻辑与偏好可以被沉淀并复用。
+              </p>
+            </article>
+          </div>
+        </div>
+
+        <div>
+          <p class="layer-label">Bottom Layer / 具体表现</p>
+          <div class="symptom-grid">
+            <article class="symptom-card">
+              <div class="symptom-index">01</div>
+              <h3>设计意图难传达</h3>
+              <p>脑中的判断、感觉与取舍很难一次性说清楚，系统也未必真正理解设计语境。</p>
+            </article>
+            <article class="symptom-card">
+              <div class="symptom-index">02</div>
+              <h3>生成结果难控制</h3>
+              <p>AI 可以产出内容，但过程像黑箱，设计师难以细调规则、步骤与评价标准。</p>
+            </article>
+            <article class="symptom-card">
+              <div class="symptom-index">03</div>
+              <h3>协作方式太被动</h3>
+              <p>当前模式更像“人提需求，AI 出结果”，设计师经常只能在后面追着修改。</p>
+            </article>
+            <article class="symptom-card">
+              <div class="symptom-index">04</div>
+              <h3>模板与 Skill 过于刚性</h3>
+              <p>预设流程虽然高效，但会限制真实设计工作里反复试探、修正与重组的空间。</p>
+            </article>
+            <article class="symptom-card">
+              <div class="symptom-index">05</div>
+              <h3>风格与方法难延续</h3>
+              <p>即使某次结果不错，背后的设计逻辑与个人方法也难被稳定继承到下一轮协作中。</p>
+            </article>
+          </div>
+        </div>
+
+        <article class="thesis-card">
+          <div class="thesis-label">可直接用于开题的说法</div>
+          <p>
+            因此，这个研究要回应的并不只是“AI 是否能生成更好的信息设计”，而是
+            <span class="accent">如何让设计师能够主动定义、调整并延续自己与 AI 的协作机制</span>，
+            从而让生成过程更可控、更开放，也更贴近设计师的真实意图。
+          </p>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>
