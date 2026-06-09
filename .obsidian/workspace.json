@@ -11,14 +11,10 @@
             "id": "5873f41678723f4c",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Formative Study/Interview/Task PRD.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "Task PRD"
+              "title": "新标签页"
             }
           }
         ]
@@ -94,7 +90,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Formative Study/Interview/Task PRD.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +99,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Task PRD 的反向链接列表"
+              "title": "反向链接"
             }
           },
           {
@@ -113,12 +108,11 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Formative Study/Interview/Task PRD.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Task PRD 的出链列表"
+              "title": "出链"
             }
           },
           {
@@ -156,13 +150,12 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Formative Study/Interview/Task PRD.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Task PRD 的大纲"
+              "title": "大纲"
             }
           }
         ]
@@ -185,11 +178,44 @@
   },
   "active": "5873f41678723f4c",
   "lastOpenFiles": [
+    "Formative Study/Recruitment/Ques Output.xlsx",
+    "Formative Study/Recruitment/Pn Information.md",
+    "Formative Study/Recruitment/Questionnaire Output.xlsx",
+    "Formative Study/Recruitment/Participants Information.md",
+    "Formative Study/Result.md",
+    "Formative Study/Task/Task Images/极简风格参考/d52ec558240961628b92bed3ae419466.jpg",
+    "Formative Study/Task/Task Images/极简风格参考/b41abb56b1d40f55ecf78633e0adcb18.jpg",
+    "Formative Study/Task/Task Images/极简风格参考/853efe16ebe6b1c0406e53b99b8fb66a.jpg",
+    "Formative Study/Task/Task Images/极简风格参考/72786945a5e7ae81bb8bc665defc2089.jpg",
+    "Formative Study/Task/Task Images/极简风格参考/574c0a588d654e2564fe9684c91707da.jpg",
+    "Formative Study/Task/Task Images/极简风格参考/541ec561eeaa1f2f8dc19d13fd728d47.jpg",
+    "Formative Study/Task/Task Images/极简风格参考/52c55e136851e98039d32556897f1d46.jpg",
+    "Formative Study/Task/Task Images/极简风格参考/3a7aaf07d1b7b9fdf0709f6fdee48402.jpg",
+    "Formative Study/Task/Task Images/极简风格参考/249d497d2c76efa526cb73ed7465cc38.jpg",
+    "Formative Study/Task/Task Images/光晕风格参考/de8873c179146375226995b65d25ca15.jpg",
+    "Formative Study/Task/Task Images/极简风格参考",
+    "Formative Study/Task/Task Images/光晕风格参考",
+    "Formative Study/Task/Task Images/ASCII 风格参考",
+    "Formative Study/Task/Task Sheet.md",
+    "Formative Study/Task/Task Images.zip",
+    "Formative Study/Task/Task Images",
+    "Formative Study/Task/Interview Plan.md",
+    "Formative Study/Task/Host Guide.md",
+    "Formative Study/Task",
+    "Formative Study/Record/P1-砂糖橘-逐字稿.md",
+    "Formative Study/Record/P1-砂糖橘-临时记录.md",
+    "Formative Study/Record/P1.md",
+    "Formative Study/Record",
+    "Formative Study/wirte/P1.md",
+    "Formative Study/wirte",
+    "Formative Study/Interview/Task Images.zip",
+    "Formative Study/Interview/Host Guide.md",
+    "Formative Study/Interview/Task PRD.md",
+    "Formative Study/Interview/Task Sheet.md",
     "Formative Study/Interview/Task Sheet Template.md",
     "Formative Study/Interview/Task Sheet - Student.md",
     "Formative Study/Interview/Task Sheet - Working.md",
     "Formative Study/Interview/Task Sheet Host Guide.md",
-    "Formative Study/Interview/Task PRD.md",
     "Formative Study/Interview/Task Text.md",
     "Formative Study/Interview/Interview Plan.md"
   ]
