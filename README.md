@@ -1,22 +1,75 @@
 # meta_design
 
-毕业设计原型代码仓库：`React + Vite` 前端，`Node.js + Express` 后端。
+毕业设计研究与原型仓库。  
+当前项目基于 `React + Vite + TypeScript` 前端，以及 `Node.js + Express` 后端。
 
-当前仓库主要用于两条线并行推进：
+这个仓库现在同时承载三条线：
 
-- `midterm`：中期 demo 与研究验证
-- `final`：最终原型与后续落地
+- `研究材料`
+  访谈、任务、招募、结论整理。
+- `前端设计`
+  参考图、交互概念、前端 `PRD`。
+- `原型实现`
+  中期前端 demo 与后续正式产品入口。
 
-## 目录结构
+<br />
 
-- `src/`：前端应用代码（包含 `demo` / `product` 双入口）
-- `api/`：后端服务与基础 API
-- `.trae/documents/slides/`：演示稿相关文档
-- `.trae/documents/midterm-demo/`：中期 demo 相关草稿
-- `.trae/documents/learning/`：学习记录、技术笔记与对话历史摘要
-- `Midterm/`：中期相关材料
-- `Proposal/`：开题相关材料
-- `INIT_WORK.md`：初始化工作记录与阶段性决策
+## 当前结构
+
+### 研究材料
+
+- [Formative Study](/Users/xiaoshizi/Documents/trae_projects/meta_design/Formative%20Study)
+  形成性研究主目录。
+- [Formative Study/Recruitment](/Users/xiaoshizi/Documents/trae_projects/meta_design/Formative%20Study/Recruitment)
+  招募问卷、脚本与参与者信息。
+- [Formative Study/Task](/Users/xiaoshizi/Documents/trae_projects/meta_design/Formative%20Study/Task)
+  任务说明、主持人 guide、任务素材。
+- [Formative Study/Participants](/Users/xiaoshizi/Documents/trae_projects/meta_design/Formative%20Study/Participants)
+  参与者逐字稿与整理版记录。
+- [Formative Study/Synthesis](/Users/xiaoshizi/Documents/trae_projects/meta_design/Formative%20Study/Synthesis)
+  `RQ1/RQ2/RQ3` 结论整理与综合结果。
+
+### 前端设计
+
+- [Frontend Design](/Users/xiaoshizi/Documents/trae_projects/meta_design/Frontend%20Design)
+  前端设计工作区。
+- [Frontend Design/references](/Users/xiaoshizi/Documents/trae_projects/meta_design/Frontend%20Design/references)
+  视觉参考、界面方向记录。
+- [Frontend Design/concepts](/Users/xiaoshizi/Documents/trae_projects/meta_design/Frontend%20Design/concepts)
+  前端概念讨论稿、结构草案。
+- [Frontend Design/prd](/Users/xiaoshizi/Documents/trae_projects/meta_design/Frontend%20Design/prd)
+  当前正在推进的正式前端 `PRD`。
+
+### 中期 demo
+
+- [Demos/midterm-frontend-demo](/Users/xiaoshizi/Documents/trae_projects/meta_design/Demos/midterm-frontend-demo)
+  毕设中期使用的阶段性前端 demo 文档。
+
+### 提案材料
+
+- [Proposal](/Users/xiaoshizi/Documents/trae_projects/meta_design/Proposal)
+  开题与提案相关文档。
+- [Proposal/drafts](/Users/xiaoshizi/Documents/trae_projects/meta_design/Proposal/drafts)
+  草稿。
+- [Proposal/notes](/Users/xiaoshizi/Documents/trae_projects/meta_design/Proposal/notes)
+  支撑性笔记与规则草稿。
+- [Proposal/exports](/Users/xiaoshizi/Documents/trae_projects/meta_design/Proposal/exports)
+  导出稿、打印版与 PDF。
+
+### 代码实现
+
+- [src](/Users/xiaoshizi/Documents/trae_projects/meta_design/src)
+  前端应用代码。
+- [src/apps/demo](/Users/xiaoshizi/Documents/trae_projects/meta_design/src/apps/demo)
+  当前中期展示用前端应用线。
+- [src/apps/product](/Users/xiaoshizi/Documents/trae_projects/meta_design/src/apps/product)
+  后续正式产品原型入口（`WIP`）。
+- [api](/Users/xiaoshizi/Documents/trae_projects/meta_design/api)
+  本地 `Express` API 服务。
+- [public](/Users/xiaoshizi/Documents/trae_projects/meta_design/public)
+  静态资源。
+
+<br />
 
 ## 本地开发
 
@@ -26,16 +79,27 @@
 npm install
 ```
 
-启动前端 + 后端（并行）：
+启动前端 + 后端：
 
 ```bash
 npm run dev
 ```
 
-运行入口（中期 demo / 最终版本）：
+默认端口：
 
-- 默认运行中期 demo：`VITE_APP_MODE=demo`
-- 运行最终版本入口：`VITE_APP_MODE=product`
+- 前端：http://localhost:5173
+- 后端：http://localhost:3001
+
+<br />
+
+## 应用入口模式
+
+前端总入口位于 [src/App.tsx](/Users/xiaoshizi/Documents/trae_projects/meta_design/src/App.tsx)，通过 `VITE_APP_MODE` 决定当前跑哪一条应用线：
+
+- `demo`
+  加载中期展示用应用。
+- `product`
+  加载正式产品原型入口。
 
 示例：
 
@@ -44,39 +108,45 @@ VITE_APP_MODE=demo npm run dev
 VITE_APP_MODE=product npm run dev
 ```
 
-默认端口：
+如果未显式设置，当前默认会进入 `demo` 线。
 
-- 前端：http://localhost:5173
-- 后端：http://localhost:3001
+<br />
 
-前端通过 Vite 代理请求后端：
+## 前后端通信
 
-- 访问 `http://localhost:5173/`，页面会自动请求 `GET /api/health` 并展示结果
+当前开发环境下：
 
-环境变量模板：
+- Vite 负责前端开发服务器
+- `Express` 负责本地 API 服务
+- `/api/*` 请求通过 Vite 代理转发到本地 `3001` 端口
 
-- 复制 `.env.example` 后再按需本地填写
-- 当前项目已约定：
-  - 前端变量使用 `VITE_*`
-  - 后端变量通过 `dotenv` 读取
+当前已提供基础健康检查接口：
 
-## 当前初始化状态
+- `GET /api/health`
 
-- 已完成：`3.2 环境变量与配置约定`
-- 已完成：`3.3 API 形态与错误规范`
-- 已基本确认：`3.4 SQLite + Drizzle + migration`
-- 已确定方向：`midterm` / `final` 子域名分工
-- 暂未开始：正式数据库骨架初始化、PRD 细化后的业务实现
+前端请求封装位于：
 
-### 常见问题
+- [src/lib/apiClient.ts](/Users/xiaoshizi/Documents/trae_projects/meta_design/src/lib/apiClient.ts)
 
-- 浏览器显示“服务不可用”（打不开 `http://localhost:5173/`）：说明前端开发服务器没有在运行。
-  - 在项目目录执行 `npm run dev` 并保持终端进程不要退出
-  - 以终端输出的 `Local: http://localhost:xxxx/` 为准（如果 5173 被占用，Vite 会自动换端口）
+<br />
+
+## 当前项目状态
+
+当前仓库的技术与文档状态可以概括为：
+
+- 已有可运行的 `React + Vite` 前端工程
+- 已有轻量 `Express` API 服务骨架
+- 已明确分开 `中期 demo` 与 `product` 入口
+- 已建立研究文档、前端设计文档与代码实现的基本目录分工
+- 正在从“中期展示型 demo”逐步推进到“元设计工作台”正式原型
+
+<br />
 
 ## 常用命令
 
 ```bash
+npm run dev
+npm run build
 npm run check
 npm run lint
 npm run format
