@@ -71,4 +71,9 @@
   .slide-canvas * {
     text-shadow: none !important;
   }
+
+  .report-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }
