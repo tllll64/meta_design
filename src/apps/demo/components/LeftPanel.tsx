@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { useWorkspaceStore } from '@/lib/workspaceStore'
 import { cn } from '@/lib/utils'
+import AssetsPanel from './AssetsPanel'
 
 const S = {
   bg: 'oklch(0.99 0.001 260)',
@@ -106,6 +107,7 @@ function KeywordTag({ word, onRemove }: { word: string; onRemove: () => void }) 
 
 export default function LeftPanel() {
   const { metaSpace, updateTask, updateStyle, addPrinciple, removePrinciple, newPrincipleId } = useWorkspaceStore()
+  const [tab, setTab] = useState<'meta' | 'assets'>('meta')
   const [newKeyword, setNewKeyword] = useState('')
   const [newPrinciple, setNewPrinciple] = useState('')
   const [kwFocused, setKwFocused] = useState(false)
@@ -128,10 +130,39 @@ export default function LeftPanel() {
   })
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', background: S.bg, color: S.text }}>
-      <div style={{ padding: '14px 16px 12px', borderBottom: `1px solid ${S.border}` }}>
-        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: S.textDim }}>元设计空间</div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: S.bg, color: S.text }}>
+      {/* tab switcher */}
+      <div style={{ display: 'flex', borderBottom: `1px solid ${S.border}`, flexShrink: 0 }}>
+        {(['meta', 'assets'] as const).map((t) => {
+          const active = tab === t
+          return (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              style={{
+                flex: 1, padding: '12px 0',
+                fontSize: 10, fontWeight: 700,
+                letterSpacing: '0.1em', textTransform: 'uppercase' as const,
+                fontFamily: 'inherit', cursor: 'pointer',
+                background: 'none', border: 'none',
+                borderBottom: `2px solid ${active ? S.text : 'transparent'}`,
+                color: active ? S.text : S.textDim,
+                transition: 'color 0.12s, border-color 0.12s',
+              }}
+              onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.color = S.textMid }}
+              onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.color = S.textDim }}
+            >
+              {t === 'meta' ? '元设计空间' : '资产库'}
+            </button>
+          )
+        })}
       </div>
+
+      {/* tab content */}
+      {tab === 'assets' ? (
+        <AssetsPanel />
+      ) : (
+        <div style={{ flex: 1, overflowY: 'auto' }}>
 
       <Section title="① 任务目标">
         <Field label="任务目标" value={metaSpace.task.goal} onChange={v => updateTask({ goal: v })} placeholder="这次设计为什么做" multiline />
@@ -221,6 +252,8 @@ export default function LeftPanel() {
           </button>
         </div>
       </Section>
+        </div>
+      )}
     </div>
   )
 }
