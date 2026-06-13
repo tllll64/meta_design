@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProjectsStore, type Project } from '@/lib/projectsStore'
+import { useGlobalMetaStore } from '@/lib/globalMetaStore'
 
 const S = {
   bg: 'oklch(0.985 0.002 260)',
@@ -224,7 +225,10 @@ function ProjectCard({ project }: { project: Project }) {
 
 export default function ProjectHub() {
   const { projects } = useProjectsStore()
+  const { principles, stylePresets, layoutPresets, specs } = useGlobalMetaStore()
+  const navigate = useNavigate()
   const [showNew, setShowNew] = useState(false)
+  const totalAssets = principles.length + stylePresets.length + layoutPresets.length + specs.length
 
   return (
     <div style={{
@@ -244,19 +248,38 @@ export default function ProjectHub() {
           </span>
           <span style={{ fontSize: 10, color: S.textDim, letterSpacing: '0.04em' }}>工作台</span>
         </div>
-        <button
-          onClick={() => setShowNew(true)}
-          style={{
-            padding: '6px 14px', fontSize: 11, fontWeight: 600,
-            letterSpacing: '0.04em', fontFamily: 'inherit', cursor: 'pointer',
-            background: S.borderStrong, color: 'oklch(0.97 0.002 260)',
-            border: 'none', borderRadius: 3, transition: 'background 0.12s',
-          }}
-          onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'oklch(0.28 0.005 260)')}
-          onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = S.borderStrong)}
-        >
-          + 新建项目
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            onClick={() => navigate('/meta')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', fontSize: 11,
+              letterSpacing: '0.04em', fontFamily: 'inherit', cursor: 'pointer',
+              background: 'transparent', color: S.textMid,
+              border: `1px solid ${S.border}`, borderRadius: 3, transition: 'background 0.12s, color 0.12s',
+            }}
+            onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = S.bg; el.style.color = S.text }}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'transparent'; el.style.color = S.textMid }}
+          >
+            元设计空间
+            {totalAssets > 0 && (
+              <span style={{ fontSize: 9, background: S.bg, border: `1px solid ${S.border}`, borderRadius: 2, padding: '1px 5px', color: S.textDim }}>{totalAssets}</span>
+            )}
+          </button>
+          <button
+            onClick={() => setShowNew(true)}
+            style={{
+              padding: '6px 14px', fontSize: 11, fontWeight: 600,
+              letterSpacing: '0.04em', fontFamily: 'inherit', cursor: 'pointer',
+              background: S.borderStrong, color: 'oklch(0.97 0.002 260)',
+              border: 'none', borderRadius: 3, transition: 'background 0.12s',
+            }}
+            onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'oklch(0.28 0.005 260)')}
+            onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = S.borderStrong)}
+          >
+            + 新建项目
+          </button>
+        </div>
       </div>
 
       {/* content */}

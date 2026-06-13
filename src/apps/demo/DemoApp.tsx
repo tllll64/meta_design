@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import ProjectHub from '@/apps/demo/pages/ProjectHub';
 import Workspace from '@/apps/demo/pages/Workspace';
+import GlobalMetaPage from '@/apps/demo/pages/GlobalMetaPage';
 import Report from '@/apps/demo/pages/Report';
 import ReportPrint from '@/apps/demo/pages/ReportPrint';
 
@@ -9,6 +10,7 @@ export default function DemoApp() {
     <Router>
       <Routes>
         <Route path="/" element={<ProjectHub />} />
+        <Route path="/meta" element={<GlobalMetaPage />} />
         <Route path="/project/:projectId" element={<Workspace />} />
         <Route path="/workspace" element={<Navigate to="/" replace />} />
         <Route path="/report" element={<Report />} />
