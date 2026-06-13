@@ -54,9 +54,19 @@ export interface ChatMessage {
   principleExtracted?: string | null
 }
 
+export interface DesignVersion {
+  id: string
+  html: string
+  createdAt: number
+  label: string
+  taskGoal: string
+}
+
 interface WorkspaceState {
   metaSpace: MetaDesignSpace
   generatedHtml: string | null
+  versions: DesignVersion[]
+  activeVersionId: string | null
   skeletonOpacity: number
   selectedObjectId: string | null
   selectedModuleId: string | null
@@ -85,6 +95,7 @@ interface WorkspaceState {
   clearNewPrincipleId: () => void
   applyExtractedMeta: (extracted: Partial<MetaDesignSpace>) => void
   setChatPhase: (phase: 'gathering' | 'editing') => void
+  restoreVersion: (id: string) => void
 }
 
 const defaultMeta: MetaDesignSpace = {
@@ -100,9 +111,31 @@ const nextId = () => `msg-${++_msgId}`
 let _principleId = 0
 const nextPrincipleId = () => `principle-${++_principleId}`
 
+let _versionId = 0
+const nextVersionId = () => `v${++_versionId}`
+
+const LS_KEY = 'meta_design_versions'
+
+function loadVersionsFromStorage(): DesignVersion[] {
+  try {
+    const raw = localStorage.getItem(LS_KEY)
+    return raw ? (JSON.parse(raw) as DesignVersion[]) : []
+  } catch { return [] }
+}
+
+function saveVersionsToStorage(versions: DesignVersion[]) {
+  try {
+    // keep max 20 versions, drop oldest
+    const trimmed = versions.slice(-20)
+    localStorage.setItem(LS_KEY, JSON.stringify(trimmed))
+  } catch { /* storage full – skip */ }
+}
+
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   metaSpace: defaultMeta,
   generatedHtml: null,
+  versions: loadVersionsFromStorage(),
+  activeVersionId: null,
   skeletonOpacity: 0,
   selectedObjectId: null,
   selectedModuleId: null,
@@ -192,7 +225,25 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   updateMessage: (id, patch) =>
     set(s => ({ messages: s.messages.map(m => (m.id === id ? { ...m, ...patch } : m)) })),
 
-  setGeneratedHtml: (html) => set({ generatedHtml: html }),
+  setGeneratedHtml: (html) => {
+    const state = get()
+    const versionNumber = state.versions.length + 1
+    const newVersion: DesignVersion = {
+      id: nextVersionId(),
+      html,
+      createdAt: Date.now(),
+      label: `v${versionNumber}`,
+      taskGoal: state.metaSpace.task.goal || '无标题',
+    }
+    const updated = [...state.versions, newVersion]
+    saveVersionsToStorage(updated)
+    set({ generatedHtml: html, versions: updated, activeVersionId: newVersion.id })
+  },
+
+  restoreVersion: (id) => {
+    const version = get().versions.find(v => v.id === id)
+    if (version) set({ generatedHtml: version.html, activeVersionId: id })
+  },
 
   setSkeletonFromExtraction: (modules) =>
     set(s => ({ metaSpace: { ...s.metaSpace, modules } })),

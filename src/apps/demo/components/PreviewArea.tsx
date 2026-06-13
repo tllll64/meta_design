@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Lock, Unlock } from 'lucide-react'
 import { useWorkspaceStore, type SkeletonModule, type ContentObject } from '@/lib/workspaceStore'
+import VersionBar from './VersionBar'
 
 const S = {
   bg: 'oklch(0.985 0.002 260)',
@@ -329,6 +330,9 @@ export default function PreviewArea() {
         onZoomOut={() => setZoom(z => Math.max(+(z - 0.1).toFixed(1), 0.2))}
         onZoomReset={() => setZoom(1)}
       />
+
+      {/* row 3: version history bar */}
+      <VersionBar />
 
       {/* canvas area */}
       <div style={{
