@@ -171,11 +171,18 @@ export default function ChatbotPanel() {
   const userMsgCount = messages.filter(m => m.role === 'user').length
   const generateReady = metaSpace.task.goal.trim().length > 0 || userMsgCount >= 3
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (editRequest?: string) => {
     setIsGenerating(true)
     setChatPhase('editing')
-    const prompt = metaSpace.task.goal.trim() ||
-      messages.filter(m => m.role === 'user').map(m => m.content).join('\n')
+
+    // gathering: use task goal or conversation history
+    // editing: use the edit request combined with existing context
+    const basePrompt = metaSpace.task.goal.trim() ||
+      messages.filter(m => m.role === 'user').map(m => m.content).slice(0, 5).join('\n')
+    const prompt = editRequest
+      ? `${basePrompt ? `原始任务：${basePrompt}\n\n` : ''}修改要求：${editRequest}`
+      : basePrompt
+
     const assistantId = appendMessage({ role: 'assistant', content: '' })
 
     try {
@@ -188,7 +195,11 @@ export default function ChatbotPanel() {
       if (json.success) {
         const { html, extractedMeta } = json.data
         setGeneratedHtml(html)
-        updateMessage(assistantId, { content: '已生成页面，元设计空间已提取并填入左侧面板。如需调整，继续描述修改意图即可。' })
+        updateMessage(assistantId, {
+          content: editRequest
+            ? '已根据修改要求重新生成页面。'
+            : '已生成页面，元设计空间已提取并填入左侧面板。如需调整，继续描述修改意图即可。',
+        })
         if (extractedMeta) applyExtractedMeta(extractedMeta)
       } else {
         updateMessage(assistantId, { content: `生成失败：${json.error?.message || '未知错误'}` })
@@ -255,15 +266,20 @@ export default function ChatbotPanel() {
     const principle = detectPrinciple(text)
     appendMessage({ role: 'user', content: text, principleExtracted: principle })
 
-    // auto-trigger generation if user says the magic words
+    // gathering: trigger words → generate
     if (chatPhase === 'gathering' && detectGenerateTrigger(text)) {
       await handleGenerate()
       return
     }
 
-    // gathering phase → chat only (no generation)
-    // editing phase → chat only
-    await handleChat(text)
+    // gathering: normal chat
+    if (chatPhase === 'gathering') {
+      await handleChat(text)
+      return
+    }
+
+    // editing: all messages trigger regeneration with the edit request
+    await handleGenerate(text)
   }
 
   return (
