@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useCallback } from 'react'
 import { Lock, Unlock } from 'lucide-react'
 import { useWorkspaceStore, type SkeletonModule, type ContentObject } from '@/lib/workspaceStore'
 import VersionBar from './VersionBar'
@@ -302,22 +302,76 @@ function ContentOverlay({ html }: { html: string }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PreviewArea() {
-  const { generatedHtml, isGenerating, metaSpace } = useWorkspaceStore()
+  const { generatedHtml, isGenerating, metaSpace, updateHtmlContent } = useWorkspaceStore()
   const [layer, setLayer] = useState<LayerMode>(0)
   const [preset, setPreset] = useState<CanvasPreset>(CANVAS_PRESETS[0])
   const [zoom, setZoom] = useState(1)
+  const [editMode, setEditMode] = useState(false)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const TRANSITION = 'opacity 0.38s cubic-bezier(0.4,0,0.2,1), filter 0.38s cubic-bezier(0.4,0,0.2,1)'
-
   const layerLabel = layer === 0 ? '② 视觉完成态' : layer === 1 ? '③ 结构与模块关系' : '② 信息内容与层级'
+
+  const enableEdit = useCallback(() => {
+    const doc = iframeRef.current?.contentDocument
+    if (!doc) return
+    doc.body.contentEditable = 'true'
+    doc.body.style.outline = 'none'
+    // add subtle edit cursor hint via injected style
+    const style = doc.createElement('style')
+    style.id = '__edit_hint__'
+    style.textContent = '[contenteditable]:focus { outline: 2px solid oklch(0.52 0.18 55) !important; outline-offset: 2px; }'
+    doc.head.appendChild(style)
+  }, [])
+
+  const exitEdit = useCallback(() => {
+    const doc = iframeRef.current?.contentDocument
+    if (doc) {
+      doc.body.contentEditable = 'false'
+      doc.getElementById('__edit_hint__')?.remove()
+      const html = iframeRef.current?.contentDocument?.documentElement?.outerHTML
+      if (html) updateHtmlContent(`<!DOCTYPE html>${html}`)
+    }
+    setEditMode(false)
+  }, [updateHtmlContent])
+
+  // exit edit mode when switching away from visual layer
+  const handleLayerChange = (v: LayerMode) => {
+    if (editMode) exitEdit()
+    setLayer(v)
+  }
+
+  const handleIframeLoad = useCallback(() => {
+    if (editMode) enableEdit()
+  }, [editMode, enableEdit])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: S.bg }}>
-      {/* row 1: layer slider + label */}
+      {/* row 1: layer slider + edit button + label */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '0 16px', height: 50, flexShrink: 0, borderBottom: `1px solid ${S.border}`, background: 'oklch(0.99 0.001 260)' }}>
-        <LayerSlider value={layer} onChange={setLayer} />
-        <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: S.textDim }}>
-          {layerLabel}
+        <LayerSlider value={layer} onChange={handleLayerChange} />
+
+        {/* edit text button — only on visual layer with generated content */}
+        {layer === 0 && generatedHtml && !isGenerating && (
+          <button
+            onClick={editMode ? exitEdit : () => { setEditMode(true); setTimeout(enableEdit, 50) }}
+            style={{
+              padding: '3px 10px', fontSize: 10, fontWeight: 600,
+              letterSpacing: '0.05em', fontFamily: 'inherit',
+              border: editMode ? `1px solid ${S.borderStrong}` : `1px dashed ${S.border}`,
+              borderRadius: 2,
+              background: editMode ? S.fillActive : 'transparent',
+              color: editMode ? S.fillActiveText : S.textMid,
+              cursor: 'pointer',
+              transition: 'all 0.12s',
+            }}
+          >
+            {editMode ? '完成编辑' : '编辑文字'}
+          </button>
+        )}
+
+        <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: editMode ? S.accent : S.textDim }}>
+          {editMode ? '编辑模式' : layerLabel}
         </span>
       </div>
 
@@ -338,21 +392,22 @@ export default function PreviewArea() {
       <div style={{
         flex: 1, overflow: 'auto',
         background: 'oklch(0.88 0.004 260)',
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'center',
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
         padding: 32,
       }}>
         {/* canvas sheet */}
         <div style={{
           width: preset.w, height: preset.h, flexShrink: 0,
           transform: `scale(${zoom})`, transformOrigin: 'top center',
-          boxShadow: '0 2px 24px oklch(0.12 0.005 260 / 0.14)',
+          boxShadow: editMode
+            ? `0 0 0 2px oklch(0.52 0.18 55), 0 2px 24px oklch(0.12 0.005 260 / 0.14)`
+            : '0 2px 24px oklch(0.12 0.005 260 / 0.14)',
           background: 'oklch(0.99 0.001 260)',
           position: 'relative',
+          transition: 'box-shadow 0.2s',
         }}>
 
-          {/* Visual layer — always rendered, fades to ghost in other modes */}
+          {/* Visual layer */}
           <div style={{
             position: 'absolute', inset: 0,
             opacity: layer === 0 ? 1 : 0.07,
@@ -374,30 +429,27 @@ export default function PreviewArea() {
               </div>
             )}
             {!isGenerating && generatedHtml && (
-              <iframe srcDoc={generatedHtml} sandbox="allow-scripts" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} title="生成预览" />
+              <iframe
+                ref={iframeRef}
+                key={editMode ? 'edit' : 'view'}
+                srcDoc={generatedHtml}
+                sandbox={editMode ? 'allow-scripts allow-same-origin' : 'allow-scripts'}
+                onLoad={handleIframeLoad}
+                style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+                title="生成预览"
+              />
             )}
           </div>
 
-          {/* Structure overlay — fades in at layer=1 */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            opacity: layer === 1 ? 1 : 0,
-            transition: TRANSITION,
-            pointerEvents: layer === 1 ? 'auto' : 'none',
-          }}>
+          {/* Structure overlay */}
+          <div style={{ position: 'absolute', inset: 0, opacity: layer === 1 ? 1 : 0, transition: TRANSITION, pointerEvents: layer === 1 ? 'auto' : 'none' }}>
             {generatedHtml && <StructureOverlay modules={metaSpace.modules} />}
           </div>
 
-          {/* Content overlay — fades in at layer=2 */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            opacity: layer === 2 ? 1 : 0,
-            transition: TRANSITION,
-            pointerEvents: layer === 2 ? 'auto' : 'none',
-          }}>
+          {/* Content overlay */}
+          <div style={{ position: 'absolute', inset: 0, opacity: layer === 2 ? 1 : 0, transition: TRANSITION, pointerEvents: layer === 2 ? 'auto' : 'none' }}>
             {generatedHtml && <ContentOverlay html={generatedHtml} />}
           </div>
-
         </div>
       </div>
 

@@ -96,6 +96,7 @@ interface WorkspaceState {
   applyExtractedMeta: (extracted: Partial<MetaDesignSpace>) => void
   setChatPhase: (phase: 'gathering' | 'editing') => void
   restoreVersion: (id: string) => void
+  updateHtmlContent: (html: string) => void
 }
 
 const defaultMeta: MetaDesignSpace = {
@@ -244,6 +245,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const version = get().versions.find(v => v.id === id)
     if (version) set({ generatedHtml: version.html, activeVersionId: id })
   },
+
+  updateHtmlContent: (html) => set({ generatedHtml: html }),
 
   setSkeletonFromExtraction: (modules) =>
     set(s => ({ metaSpace: { ...s.metaSpace, modules } })),
