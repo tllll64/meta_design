@@ -152,6 +152,17 @@ function saveSnapshot(projectId: string, snap: WorkspaceSnapshot) {
   try { localStorage.setItem(LS_WORKSPACE(projectId), JSON.stringify(snap)) } catch { }
 }
 
+function persistState(get: () => WorkspaceState) {
+  const s = get()
+  if (!s.currentProjectId) return
+  saveSnapshot(s.currentProjectId, {
+    metaSpace: s.metaSpace,
+    generatedHtml: s.generatedHtml,
+    activeVersionId: s.activeVersionId,
+    chatPhase: s.chatPhase,
+  })
+}
+
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   metaSpace: defaultMeta,
   generatedHtml: null,
@@ -167,10 +178,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   chatPhase: 'gathering',
   currentProjectId: null,
 
-  updateTask: (patch) =>
-    set(s => ({ metaSpace: { ...s.metaSpace, task: { ...s.metaSpace.task, ...patch } } })),
+  updateTask: (patch) => {
+    set(s => ({ metaSpace: { ...s.metaSpace, task: { ...s.metaSpace.task, ...patch } } }))
+    persistState(get)
+  },
 
-  updateStyle: (patch) =>
+  updateStyle: (patch) => {
     set(s => ({
       metaSpace: {
         ...s.metaSpace,
@@ -180,7 +193,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           keywords: patch.keywords !== undefined ? patch.keywords : s.metaSpace.style.keywords,
         },
       },
-    })),
+    }))
+    persistState(get)
+  },
 
   addPrinciple: (content, source) => {
     const id = nextPrincipleId()
@@ -194,24 +209,29 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       },
       newPrincipleId: id,
     }))
+    persistState(get)
     return id
   },
 
-  removePrinciple: (id) =>
+  removePrinciple: (id) => {
     set(s => ({
       metaSpace: {
         ...s.metaSpace,
         principles: s.metaSpace.principles.filter(p => p.id !== id),
       },
-    })),
+    }))
+    persistState(get)
+  },
 
-  updateModule: (id, patch) =>
+  updateModule: (id, patch) => {
     set(s => ({
       metaSpace: {
         ...s.metaSpace,
         modules: s.metaSpace.modules.map(m => (m.id === id ? { ...m, ...patch } : m)),
       },
-    })),
+    }))
+    persistState(get)
+  },
 
   moveModule: (id, newOrder) => {
     const modules = [...get().metaSpace.modules].sort((a, b) => a.order - b.order)
@@ -221,9 +241,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     modules.splice(newOrder, 0, moved)
     const reordered = modules.map((m, i) => ({ ...m, order: i }))
     set(s => ({ metaSpace: { ...s.metaSpace, modules: reordered } }))
+    persistState(get)
   },
 
-  updateObject: (moduleId, objId, patch) =>
+  updateObject: (moduleId, objId, patch) => {
     set(s => ({
       metaSpace: {
         ...s.metaSpace,
@@ -233,7 +254,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
             : m
         ),
       },
-    })),
+    }))
+    persistState(get)
+  },
 
   setSelectedObject: (id) => set({ selectedObjectId: id }),
   setSelectedModule: (id) => set({ selectedModuleId: id }),
@@ -270,7 +293,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     if (version) set({ generatedHtml: version.html, activeVersionId: id })
   },
 
-  updateHtmlContent: (html) => set({ generatedHtml: html }),
+  updateHtmlContent: (html) => {
+    set({ generatedHtml: html })
+    persistState(get)
+  },
 
   loadForProject: (projectId) => {
     const versions = loadVersions(projectId)
@@ -306,8 +332,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     selectedModuleId: null,
   }),
 
-  setSkeletonFromExtraction: (modules) =>
-    set(s => ({ metaSpace: { ...s.metaSpace, modules } })),
+  setSkeletonFromExtraction: (modules) => {
+    set(s => ({ metaSpace: { ...s.metaSpace, modules } }))
+    persistState(get)
+  },
 
   setSkeletonOpacity: (v) => set({ skeletonOpacity: v }),
   setIsGenerating: (v) => set({ isGenerating: v }),
@@ -316,7 +344,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   setChatPhase: (phase) => set({ chatPhase: phase }),
 
-  applyExtractedMeta: (extracted) =>
+  applyExtractedMeta: (extracted) => {
     set(s => ({
       metaSpace: {
         task: extracted.task
@@ -328,5 +356,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         principles: s.metaSpace.principles,
         modules: extracted.modules || s.metaSpace.modules,
       },
-    })),
+    }))
+    persistState(get)
+  },
 }))

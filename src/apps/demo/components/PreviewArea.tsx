@@ -1,6 +1,5 @@
-import { useState, useMemo, useRef, useCallback } from 'react'
-import { Lock, Unlock } from 'lucide-react'
-import { useWorkspaceStore, type SkeletonModule, type ContentObject } from '@/lib/workspaceStore'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { useWorkspaceStore } from '@/lib/workspaceStore'
 import VersionBar from './VersionBar'
 
 const S = {
@@ -11,47 +10,75 @@ const S = {
   textMid: 'oklch(0.38 0.005 260)',
   textDim: 'oklch(0.58 0.004 260)',
   surface: 'oklch(0.965 0.002 260)',
-  surfaceSelected: 'oklch(0.955 0.006 240)',
   accent: 'oklch(0.52 0.18 55)',
   fillActive: 'oklch(0.14 0.005 260)',
   fillActiveText: 'oklch(0.97 0.002 260)',
 }
 
-// ─── HTML Text Outline Parser ─────────────────────────────────────────────────
+// ─── Live DOM Measurement ─────────────────────────────────────────────────────
 
-function parseHtmlOutline(html: string): Array<{ text: string; level: number }> {
-  try {
-    const doc = new DOMParser().parseFromString(html, 'text/html')
-    const items: Array<{ text: string; level: number }> = []
+interface LiveBlock { label: string; x: number; y: number; w: number; h: number }
+interface LiveText { text: string; fontSize: number; fontWeight: string; x: number; y: number }
+interface LiveDomData { blocks: LiveBlock[]; texts: LiveText[] }
 
-    const walk = (el: Element) => {
-      const tag = el.tagName.toLowerCase()
-      if (['script', 'style', 'head', 'svg', 'path', 'noscript'].includes(tag)) return
-
-      if (/^h[1-6]$/.test(tag)) {
-        const text = el.textContent?.trim().replace(/\s+/g, ' ')
-        if (text) items.push({ text, level: parseInt(tag[1]) - 1 })
-        return
+// Injected into iframe srcDoc; fires on load and postMessages block + text data to parent
+const MEASURE_SCRIPT = `<script>
+(function(){
+  function run(){
+    var dw=document.body.scrollWidth;
+    var blocks=[],seen=new Set();
+    var cands=Array.from(document.querySelectorAll('header,footer,nav,main,section,article,aside'));
+    Array.from(document.body.children).forEach(function(el){
+      var r=el.getBoundingClientRect();
+      if(r.width>dw*0.4&&r.height>60){
+        cands.push(el);
+        Array.from(el.children).forEach(function(c){
+          var cr=c.getBoundingClientRect();
+          if(cr.width>dw*0.4&&cr.height>50)cands.push(c);
+        });
       }
-      if (tag === 'p') {
-        const text = el.textContent?.trim().replace(/\s+/g, ' ')
-        if (text && text.length > 3)
-          items.push({ text: text.length > 110 ? text.slice(0, 110) + '…' : text, level: 3 })
-        return
-      }
-      if (tag === 'li') {
-        const text = el.textContent?.trim().replace(/\s+/g, ' ')
-        if (text) items.push({ text: text.length > 80 ? text.slice(0, 80) + '…' : text, level: 3 })
-        return
-      }
-      for (const child of Array.from(el.children)) walk(child)
+    });
+    cands.forEach(function(el){
+      if(seen.has(el))return;seen.add(el);
+      var r=el.getBoundingClientRect();
+      if(r.width<80||r.height<40)return;
+      var cs=window.getComputedStyle(el);
+      if(cs.display==='none'||cs.visibility==='hidden')return;
+      var contained=blocks.some(function(b){return b.x<=r.left&&b.y<=r.top&&b.x+b.w>=r.right&&b.y+b.h>=r.bottom;});
+      if(contained)return;
+      var label=el.tagName.toLowerCase();
+      var cls=Array.from(el.classList).find(function(c){return c.length>2&&c.length<30&&!/^[0-9]/.test(c);});
+      if(el.id)label=el.id;else if(cls)label=cls;
+      blocks.push({label:String(label).slice(0,30),x:Math.round(r.left),y:Math.round(r.top),w:Math.round(r.width),h:Math.round(r.height)});
+    });
+    var texts=[],tSeen=new Set();
+    var walker=document.createTreeWalker(document.body,4);
+    var node;
+    while((node=walker.nextNode())){
+      var t=node.textContent.replace(/\\s+/g,' ').trim();
+      if(!t||t.length<2)continue;
+      var p=node.parentElement;
+      if(!p)continue;
+      var ptag=p.tagName.toLowerCase();
+      if(['script','style','noscript','svg','path'].indexOf(ptag)>=0)continue;
+      var pr=p.getBoundingClientRect();
+      if(pr.width<1||pr.height<1)continue;
+      var pcs=window.getComputedStyle(p);
+      if(pcs.display==='none'||pcs.visibility==='hidden')continue;
+      var key=t+'@'+Math.round(pr.left)+','+Math.round(pr.top);
+      if(tSeen.has(key))continue;tSeen.add(key);
+      texts.push({text:t.length>150?t.slice(0,150)+'...':t,fontSize:Math.round(parseFloat(pcs.fontSize)||14),fontWeight:pcs.fontWeight,x:Math.round(pr.left),y:Math.round(pr.top)});
     }
-
-    walk(doc.body)
-    return items
-  } catch {
-    return []
+    texts.sort(function(a,b){return a.y-b.y||a.x-b.x;});
+    window.parent.postMessage({type:'META_MEASURE',blocks:blocks,texts:texts},'*');
   }
+  if(document.readyState==='complete')run();else window.addEventListener('load',run);
+})();
+</script>`
+
+function buildSrcDoc(html: string): string {
+  const idx = html.lastIndexOf('</body>')
+  return idx >= 0 ? html.slice(0, idx) + MEASURE_SCRIPT + html.slice(idx) : html + MEASURE_SCRIPT
 }
 
 // ─── Canvas Size Presets ──────────────────────────────────────────────────────
@@ -82,16 +109,12 @@ function LayerSlider({ value, onChange }: { value: LayerMode; onChange: (v: Laye
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', width: 108 }}>
         {LAYER_LABELS.map((label, i) => (
-          <span
-            key={i}
-            onClick={() => onChange(i as LayerMode)}
-            style={{
-              fontSize: 9, letterSpacing: '0.06em', cursor: 'pointer',
-              fontWeight: value === i ? 700 : 400,
-              color: value === i ? S.text : S.textDim,
-              transition: 'color 0.15s, font-weight 0.15s',
-            }}
-          >{label}</span>
+          <span key={i} onClick={() => onChange(i as LayerMode)} style={{
+            fontSize: 9, letterSpacing: '0.06em', cursor: 'pointer',
+            fontWeight: value === i ? 700 : 400,
+            color: value === i ? S.text : S.textDim,
+            transition: 'color 0.15s, font-weight 0.15s',
+          }}>{label}</span>
         ))}
       </div>
     </div>
@@ -141,127 +164,87 @@ function CanvasPresetBar({ active, onChange, zoom, onZoomIn, onZoomOut, onZoomRe
   )
 }
 
-// ─── Object Param Panel ───────────────────────────────────────────────────────
+// ─── Structure Overlay ────────────────────────────────────────────────────────
 
-const SEMANTICS_LABEL: Record<ContentObject['semantics'], string> = {
-  headline: '主标题', subheadline: '副标题', conclusion: '核心结论',
-  support: '支撑信息', source: '来源', brand: '品牌', decoration: '装饰',
-}
+const MOD_BG = [
+  'oklch(0.93 0.025 240 / 0.72)', 'oklch(0.93 0.025 55 / 0.72)',
+  'oklch(0.93 0.025 150 / 0.72)', 'oklch(0.93 0.025 310 / 0.72)',
+  'oklch(0.93 0.025 25 / 0.72)',  'oklch(0.93 0.025 200 / 0.72)',
+]
+const MOD_BORDER = [
+  'oklch(0.58 0.09 240)', 'oklch(0.58 0.14 55)', 'oklch(0.58 0.10 150)',
+  'oklch(0.58 0.10 310)', 'oklch(0.58 0.10 25)', 'oklch(0.58 0.09 200)',
+]
 
-const IMPORTANCE_DOT: Record<ContentObject['importance'], string> = {
-  highest: 'oklch(0.52 0.18 25)', high: 'oklch(0.58 0.16 55)',
-  medium: 'oklch(0.52 0.08 240)', low: 'oklch(0.72 0.004 260)',
-}
+function StructureOverlay({ blocks }: { blocks: LiveBlock[] }) {
+  if (blocks.length === 0) return (
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ fontSize: 12, color: S.textDim }}>生成内容后，结构层将在此显示</span>
+    </div>
+  )
 
-function ObjectParamPanel({ obj, moduleId, onClose }: { obj: ContentObject; moduleId: string; onClose: () => void }) {
-  const { updateObject } = useWorkspaceStore()
   return (
-    <div style={{ position: 'absolute', zIndex: 50, left: '50%', top: 0, transform: 'translate(-50%, calc(-100% - 6px))', width: 210, background: 'oklch(0.99 0.001 260)', border: `1px solid ${S.borderStrong}`, borderRadius: 3, padding: 12, boxShadow: '0 4px 16px oklch(0.12 0.005 260 / 0.12)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: S.textDim }}>对象参数</span>
-        <button onClick={onClose} style={{ fontSize: 11, color: S.textDim, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>✕</button>
-      </div>
-      {([
-        { label: '语义', key: 'semantics', options: Object.entries(SEMANTICS_LABEL).map(([k, v]) => ({ value: k, label: v })) },
-        { label: '重要程度', key: 'importance', options: [{ value: 'highest', label: '最高' }, { value: 'high', label: '高' }, { value: 'medium', label: '中' }, { value: 'low', label: '低' }] },
-        { label: '改动权限', key: 'editPermission', options: [{ value: 'free', label: '自由修改' }, { value: 'confirm', label: '需确认' }, { value: 'locked', label: '锁定' }] },
-      ] as const).map(({ label, key, options }) => (
-        <div key={key} style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 9, color: S.textDim, marginBottom: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
-          <select value={(obj as any)[key]} onChange={e => updateObject(moduleId, obj.id, { [key]: e.target.value } as any)}
-            style={{ width: '100%', fontSize: 11, fontFamily: 'inherit', padding: '4px 8px', color: S.text, background: S.surface, border: `1px solid ${S.border}`, borderRadius: 2, outline: 'none' }}>
-            {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+    <div style={{ position: 'absolute', inset: 0 }}>
+      {blocks.map((block, i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          left: block.x, top: block.y, width: block.w, height: block.h,
+          background: MOD_BG[i % MOD_BG.length],
+          border: `1.5px solid ${MOD_BORDER[i % MOD_BORDER.length]}`,
+          boxSizing: 'border-box',
+          pointerEvents: 'none',
+        }}>
+          <div style={{
+            position: 'absolute', top: 0, left: 0,
+            padding: '2px 8px', fontSize: 10, fontWeight: 600,
+            background: MOD_BORDER[i % MOD_BORDER.length],
+            color: 'oklch(0.99 0.001 260)',
+            letterSpacing: '0.03em',
+            maxWidth: '80%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {block.label}
+          </div>
+          <div style={{
+            position: 'absolute', bottom: 4, right: 8,
+            fontSize: 9, color: MOD_BORDER[i % MOD_BORDER.length],
+            fontWeight: 500, opacity: 0.7,
+          }}>
+            {Math.round(block.w)} × {Math.round(block.h)}
+          </div>
         </div>
       ))}
     </div>
   )
 }
 
-// ─── Structure Overlay ────────────────────────────────────────────────────────
+// ─── Content Overlay ──────────────────────────────────────────────────────────
 
-const MOD_BG = [
-  'oklch(0.93 0.025 240 / 0.82)', 'oklch(0.93 0.025 55 / 0.82)',
-  'oklch(0.93 0.025 150 / 0.82)', 'oklch(0.93 0.025 310 / 0.82)',
-  'oklch(0.93 0.025 25 / 0.82)',  'oklch(0.93 0.025 200 / 0.82)',
-]
-const MOD_BORDER = [
-  'oklch(0.68 0.07 240)', 'oklch(0.68 0.12 55)', 'oklch(0.68 0.09 150)',
-  'oklch(0.68 0.09 310)', 'oklch(0.68 0.09 25)', 'oklch(0.68 0.07 200)',
-]
-
-function StructureOverlay({ modules }: { modules: SkeletonModule[] }) {
-  const { updateModule, appendMessage, setSelectedModule, selectedModuleId } = useWorkspaceStore()
-  const [selectedObj, setSelectedObj] = useState<{ moduleId: string; objId: string } | null>(null)
-
-  const sorted = [...modules].sort((a, b) => a.order - b.order)
-
-  if (sorted.length === 0) return (
-    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <span style={{ fontSize: 12, color: S.textDim }}>生成内容后，结构层将在此显示</span>
+function ContentOverlay({ texts }: { texts: LiveText[] }) {
+  if (texts.length === 0) return (
+    <div style={{ position: 'absolute', inset: 0, background: 'oklch(0.99 0.001 260 / 0.96)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ fontSize: 12, color: S.textDim }}>暂无可提取的文字内容</span>
     </div>
   )
 
-  const heights = sorted.map(m => m.rect.height || 120)
-  const totalH = heights.reduce((a, b) => a + b, 0)
-
-  const handleToggleLock = (mod: SkeletonModule, e: React.MouseEvent) => {
-    e.stopPropagation()
-    const locked = !mod.locked
-    updateModule(mod.id, { locked })
-    appendMessage({ role: 'system', content: `🔧 结构调整\n· 模块「${mod.label}」已${locked ? '锁定' : '解锁'}`, isSystemAction: true })
-  }
+  // Map font sizes to hierarchy levels (largest = 0)
+  const sizes = [...new Set(texts.map(t => t.fontSize))].sort((a, b) => b - a)
+  const getLevel = (fs: number) => Math.min(sizes.indexOf(fs), 3)
 
   return (
-    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
-      {sorted.map((mod, i) => {
-        const isSelected = selectedModuleId === mod.id
+    <div style={{ position: 'absolute', inset: 0, background: 'oklch(0.99 0.001 260 / 0.95)', overflow: 'auto', padding: '28px 36px' }}>
+      {texts.map((item, i) => {
+        const level = getLevel(item.fontSize)
         return (
-          <div
-            key={mod.id}
-            onClick={() => setSelectedModule(isSelected ? null : mod.id)}
-            style={{
-              flex: heights[i] / totalH,
-              background: MOD_BG[i % MOD_BG.length],
-              border: `1px solid ${isSelected ? S.borderStrong : MOD_BORDER[i % MOD_BORDER.length]}`,
-              display: 'flex', flexDirection: 'column',
-              cursor: 'pointer',
-              opacity: mod.locked ? 0.6 : 1,
-              transition: 'border-color 0.12s',
-              minHeight: 40, overflow: 'hidden',
-            }}
-          >
-            {/* module header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 10px', flexShrink: 0, borderBottom: `1px solid ${MOD_BORDER[i % MOD_BORDER.length]}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: S.text }}>{mod.label}</span>
-                <span style={{ fontSize: 9, color: S.textDim, letterSpacing: '0.04em' }}>#{mod.order + 1}</span>
-              </div>
-              <button onClick={e => handleToggleLock(mod, e)} style={{ display: 'flex', padding: 4, background: 'none', border: 'none', cursor: 'pointer', color: mod.locked ? S.accent : S.textDim }}>
-                {mod.locked ? <Lock size={10} /> : <Unlock size={10} />}
-              </button>
-            </div>
-
-            {/* objects */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '6px 10px', flex: 1, alignContent: 'flex-start' }}>
-              {mod.objects.map(obj => {
-                const isObjSelected = selectedObj?.moduleId === mod.id && selectedObj?.objId === obj.id
-                return (
-                  <div key={obj.id} style={{ position: 'relative' }}>
-                    <button
-                      onClick={e => { e.stopPropagation(); setSelectedObj(isObjSelected ? null : { moduleId: mod.id, objId: obj.id }) }}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 8px', fontSize: 10, fontWeight: 500, fontFamily: 'inherit', border: `1px solid ${isObjSelected ? S.borderStrong : S.border}`, borderRadius: 2, background: isObjSelected ? S.surface : 'transparent', color: S.textMid, cursor: 'pointer' }}
-                    >
-                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: IMPORTANCE_DOT[obj.importance], flexShrink: 0 }} />
-                      {SEMANTICS_LABEL[obj.semantics]}
-                    </button>
-                    {isObjSelected && (
-                      <ObjectParamPanel obj={obj} moduleId={mod.id} onClose={() => setSelectedObj(null)} />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+          <div key={i} style={{
+            paddingLeft: level * 16,
+            marginBottom: level === 0 ? 14 : level === 1 ? 8 : 4,
+            fontSize: level === 0 ? 16 : level === 1 ? 13 : level === 2 ? 12 : 11,
+            fontWeight: level === 0 ? 700 : level === 1 ? 600 : 400,
+            lineHeight: 1.5,
+            color: level === 0 ? S.text : level <= 1 ? S.textMid : S.textDim,
+          }}>
+            {level >= 2 && <span style={{ marginRight: 6, color: S.border, fontWeight: 300 }}>—</span>}
+            {item.text}
           </div>
         )
       })}
@@ -269,45 +252,30 @@ function StructureOverlay({ modules }: { modules: SkeletonModule[] }) {
   )
 }
 
-// ─── Content Overlay ──────────────────────────────────────────────────────────
-
-function ContentOverlay({ html }: { html: string }) {
-  const outline = useMemo(() => parseHtmlOutline(html), [html])
-
-  if (outline.length === 0) return (
-    <div style={{ position: 'absolute', inset: 0, background: 'oklch(0.99 0.001 260 / 0.96)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <span style={{ fontSize: 12, color: S.textDim }}>暂无可提取的文字内容</span>
-    </div>
-  )
-
-  return (
-    <div style={{ position: 'absolute', inset: 0, background: 'oklch(0.99 0.001 260 / 0.95)', overflow: 'auto', padding: '28px 36px' }}>
-      {outline.map((item, i) => (
-        <div key={i} style={{
-          paddingLeft: item.level * 14,
-          marginBottom: item.level <= 1 ? 16 : item.level === 2 ? 8 : 4,
-          fontSize: item.level === 0 ? 17 : item.level === 1 ? 14 : item.level === 2 ? 12 : 11,
-          fontWeight: item.level === 0 ? 700 : item.level === 1 ? 600 : 400,
-          lineHeight: 1.45,
-          color: item.level === 0 ? S.text : item.level <= 2 ? S.textMid : S.textDim,
-        }}>
-          {item.level >= 3 && <span style={{ marginRight: 6, color: S.border, fontWeight: 300 }}>—</span>}
-          {item.text}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PreviewArea() {
-  const { generatedHtml, isGenerating, metaSpace, updateHtmlContent } = useWorkspaceStore()
+  const { generatedHtml, isGenerating, updateHtmlContent } = useWorkspaceStore()
   const [layer, setLayer] = useState<LayerMode>(0)
   const [preset, setPreset] = useState<CanvasPreset>(CANVAS_PRESETS[0])
   const [zoom, setZoom] = useState(1)
   const [editMode, setEditMode] = useState(false)
+  const [liveData, setLiveData] = useState<LiveDomData | null>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  // Receive measured DOM data from iframe
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'META_MEASURE') {
+        setLiveData({ blocks: e.data.blocks ?? [], texts: e.data.texts ?? [] })
+      }
+    }
+    window.addEventListener('message', handler)
+    return () => window.removeEventListener('message', handler)
+  }, [])
+
+  // Reset live data when HTML changes so stale overlay doesn't linger
+  useEffect(() => { setLiveData(null) }, [generatedHtml])
 
   const TRANSITION = 'opacity 0.38s cubic-bezier(0.4,0,0.2,1), filter 0.38s cubic-bezier(0.4,0,0.2,1)'
   const layerLabel = layer === 0 ? '② 视觉完成态' : layer === 1 ? '③ 结构与模块关系' : '② 信息内容与层级'
@@ -317,7 +285,6 @@ export default function PreviewArea() {
     if (!doc) return
     doc.body.contentEditable = 'true'
     doc.body.style.outline = 'none'
-    // add subtle edit cursor hint via injected style
     const style = doc.createElement('style')
     style.id = '__edit_hint__'
     style.textContent = '[contenteditable]:focus { outline: 2px solid oklch(0.52 0.18 55) !important; outline-offset: 2px; }'
@@ -335,7 +302,6 @@ export default function PreviewArea() {
     setEditMode(false)
   }, [updateHtmlContent])
 
-  // exit edit mode when switching away from visual layer
   const handleLayerChange = (v: LayerMode) => {
     if (editMode) exitEdit()
     setLayer(v)
@@ -345,76 +311,55 @@ export default function PreviewArea() {
     if (editMode) enableEdit()
   }, [editMode, enableEdit])
 
+  // In edit mode use plain html (allow-same-origin needed); otherwise inject measure script
+  const srcDocForIframe = editMode ? generatedHtml! : (generatedHtml ? buildSrcDoc(generatedHtml) : null)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: S.bg }}>
-      {/* row 1: layer slider + edit button + label */}
+      {/* row 1: controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '0 16px', height: 50, flexShrink: 0, borderBottom: `1px solid ${S.border}`, background: 'oklch(0.99 0.001 260)' }}>
         <LayerSlider value={layer} onChange={handleLayerChange} />
-
-        {/* edit text button — only on visual layer with generated content */}
         {layer === 0 && generatedHtml && !isGenerating && (
           <button
             onClick={editMode ? exitEdit : () => { setEditMode(true); setTimeout(enableEdit, 50) }}
             style={{
-              padding: '3px 10px', fontSize: 10, fontWeight: 600,
-              letterSpacing: '0.05em', fontFamily: 'inherit',
+              padding: '3px 10px', fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', fontFamily: 'inherit',
               border: editMode ? `1px solid ${S.borderStrong}` : `1px dashed ${S.border}`,
-              borderRadius: 2,
-              background: editMode ? S.fillActive : 'transparent',
-              color: editMode ? S.fillActiveText : S.textMid,
-              cursor: 'pointer',
-              transition: 'all 0.12s',
+              borderRadius: 2, background: editMode ? S.fillActive : 'transparent',
+              color: editMode ? S.fillActiveText : S.textMid, cursor: 'pointer', transition: 'all 0.12s',
             }}
           >
             {editMode ? '完成编辑' : '编辑文字'}
           </button>
         )}
-
         <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: editMode ? S.accent : S.textDim }}>
           {editMode ? '编辑模式' : layerLabel}
         </span>
       </div>
 
-      {/* row 2: canvas preset bar */}
+      {/* row 2: canvas presets */}
       <CanvasPresetBar
-        active={preset.key}
-        onChange={p => setPreset(p)}
-        zoom={zoom}
+        active={preset.key} onChange={p => setPreset(p)} zoom={zoom}
         onZoomIn={() => setZoom(z => Math.min(+(z + 0.1).toFixed(1), 3))}
         onZoomOut={() => setZoom(z => Math.max(+(z - 0.1).toFixed(1), 0.2))}
         onZoomReset={() => setZoom(1)}
       />
 
-      {/* row 3: version history bar */}
+      {/* row 3: version bar */}
       <VersionBar />
 
       {/* canvas area */}
-      <div style={{
-        flex: 1, overflow: 'auto',
-        background: 'oklch(0.88 0.004 260)',
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        padding: 32,
-      }}>
-        {/* canvas sheet */}
+      <div style={{ flex: 1, overflow: 'auto', background: 'oklch(0.88 0.004 260)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 32 }}>
         <div style={{
           width: preset.w, height: preset.h, flexShrink: 0,
           transform: `scale(${zoom})`, transformOrigin: 'top center',
           boxShadow: editMode
             ? `0 0 0 2px oklch(0.52 0.18 55), 0 2px 24px oklch(0.12 0.005 260 / 0.14)`
             : '0 2px 24px oklch(0.12 0.005 260 / 0.14)',
-          background: 'oklch(0.99 0.001 260)',
-          position: 'relative',
-          transition: 'box-shadow 0.2s',
+          background: 'oklch(0.99 0.001 260)', position: 'relative', transition: 'box-shadow 0.2s',
         }}>
-
           {/* Visual layer */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            opacity: layer === 0 ? 1 : 0.07,
-            filter: layer === 0 ? 'none' : 'blur(1.5px)',
-            transition: TRANSITION,
-            pointerEvents: layer === 0 ? 'auto' : 'none',
-          }}>
+          <div style={{ position: 'absolute', inset: 0, opacity: layer === 0 ? 1 : 0.07, filter: layer === 0 ? 'none' : 'blur(1.5px)', transition: TRANSITION, pointerEvents: layer === 0 ? 'auto' : 'none' }}>
             {isGenerating && (
               <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
                 <div style={{ width: 20, height: 20, borderRadius: '50%', border: `1px solid ${S.border}`, borderTopColor: S.borderStrong, animation: 'spin 0.8s linear infinite' }} />
@@ -428,11 +373,11 @@ export default function PreviewArea() {
                 <p style={{ fontSize: 11, color: S.textDim }}>AI 将生成页面并自动提取元设计空间</p>
               </div>
             )}
-            {!isGenerating && generatedHtml && (
+            {!isGenerating && srcDocForIframe && (
               <iframe
                 ref={iframeRef}
                 key={editMode ? 'edit' : 'view'}
-                srcDoc={generatedHtml}
+                srcDoc={srcDocForIframe}
                 sandbox={editMode ? 'allow-scripts allow-same-origin' : 'allow-scripts'}
                 onLoad={handleIframeLoad}
                 style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
@@ -441,14 +386,14 @@ export default function PreviewArea() {
             )}
           </div>
 
-          {/* Structure overlay */}
-          <div style={{ position: 'absolute', inset: 0, opacity: layer === 1 ? 1 : 0, transition: TRANSITION, pointerEvents: layer === 1 ? 'auto' : 'none' }}>
-            {generatedHtml && <StructureOverlay modules={metaSpace.modules} />}
+          {/* Structure overlay — pixel-accurate absolute blocks from live DOM */}
+          <div style={{ position: 'absolute', inset: 0, opacity: layer === 1 ? 1 : 0, transition: TRANSITION, pointerEvents: 'none' }}>
+            {generatedHtml && <StructureOverlay blocks={liveData?.blocks ?? []} />}
           </div>
 
-          {/* Content overlay */}
+          {/* Content overlay — text extracted from live DOM */}
           <div style={{ position: 'absolute', inset: 0, opacity: layer === 2 ? 1 : 0, transition: TRANSITION, pointerEvents: layer === 2 ? 'auto' : 'none' }}>
-            {generatedHtml && <ContentOverlay html={generatedHtml} />}
+            {generatedHtml && <ContentOverlay texts={liveData?.texts ?? []} />}
           </div>
         </div>
       </div>
