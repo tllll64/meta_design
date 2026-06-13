@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Check, X, ArrowRight } from 'lucide-react'
+import { Send, Check, ArrowRight } from 'lucide-react'
 import { useWorkspaceStore, type ChatMessage } from '@/lib/workspaceStore'
 
 const S = {
@@ -313,7 +313,6 @@ export default function ChatbotPanel() {
           <textarea
             value={input}
             onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
             onFocus={() => setInputFocused(true)}
             onBlur={() => setInputFocused(false)}
             placeholder={chatPhase === 'gathering' ? '描述你的任务、受众、风格偏好…' : '描述修改要求…'}
@@ -338,7 +337,7 @@ export default function ChatbotPanel() {
           </button>
         </div>
         <div style={{ marginTop: 5, textAlign: 'center', fontSize: 9, color: S.textDim, letterSpacing: '0.04em' }}>
-          Enter 发送 · Shift+Enter 换行
+          Enter 换行 · 点击发送按钮发送
         </div>
       </div>
     </div>
