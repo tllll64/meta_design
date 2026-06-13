@@ -10,6 +10,8 @@ import express, {
 import cors from 'cors'
 import dotenv from 'dotenv'
 import { AppError, failure, success } from './lib/http.js'
+import generateRouter from './routes/generate.js'
+import chatRouter from './routes/chat.js'
 
 // load env
 dotenv.config()
@@ -61,6 +63,9 @@ app.use('/api/error-test', () => {
     code: 'ERROR_TEST',
   })
 })
+
+app.use('/api', generateRouter)
+app.use('/api', chatRouter)
 
 /**
  * error handler middleware

@@ -7,7 +7,17 @@ export default {
     container: {
       center: true,
     },
-    extend: {},
+    extend: {
+      animation: {
+        'pulse-once': 'pulse-once 1.2s ease-in-out',
+      },
+      keyframes: {
+        'pulse-once': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.4' },
+        },
+      },
+    },
   },
   plugins: [],
 };
