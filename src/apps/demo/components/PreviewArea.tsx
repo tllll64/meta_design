@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Lock, Unlock } from 'lucide-react'
 import { useWorkspaceStore, type SkeletonModule, type ContentObject } from '@/lib/workspaceStore'
 
@@ -315,15 +315,130 @@ function StructureLayer() {
   )
 }
 
+// ─── Canvas Size Presets ─────────────────────────────────────────────────────
+
+interface CanvasPreset {
+  key: string
+  label: string
+  w: number
+  h: number
+}
+
+const CANVAS_PRESETS: CanvasPreset[] = [
+  { key: 'free',    label: '自由',    w: 0,    h: 0 },
+  { key: 'a4',      label: 'A4',      w: 794,  h: 1123 },
+  { key: 'poster',  label: '海报',    w: 800,  h: 1200 },
+  { key: 'ppt',     label: 'PPT',     w: 960,  h: 540 },
+  { key: 'xhs',     label: '小红书',  w: 1080, h: 1440 },
+  { key: 'banner',  label: 'Banner',  w: 1200, h: 628 },
+  { key: 'story',   label: 'Story',   w: 1080, h: 1920 },
+]
+
+function CanvasPresetBar({
+  active,
+  onChange,
+  zoom,
+  onZoomIn,
+  onZoomOut,
+  onZoomReset,
+}: {
+  active: string
+  onChange: (p: CanvasPreset) => void
+  zoom: number
+  onZoomIn: () => void
+  onZoomOut: () => void
+  onZoomReset: () => void
+}) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center',
+      padding: '0 12px',
+      height: 34,
+      borderBottom: `1px solid ${S.border}`,
+      background: S.surface,
+      gap: 0,
+      flexShrink: 0,
+    }}>
+      {/* presets */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0, flex: 1, overflow: 'hidden' }}>
+        {CANVAS_PRESETS.map((p, i) => {
+          const isActive = active === p.key
+          return (
+            <button
+              key={p.key}
+              onClick={() => onChange(p)}
+              style={{
+                padding: '3px 10px',
+                fontSize: 11,
+                fontWeight: isActive ? 600 : 400,
+                fontFamily: 'inherit',
+                color: isActive ? S.text : S.textDim,
+                background: isActive ? S.bg : 'transparent',
+                border: `1px solid ${isActive ? S.border : 'transparent'}`,
+                borderRadius: 2,
+                cursor: 'pointer',
+                letterSpacing: '0.02em',
+                whiteSpace: 'nowrap' as const,
+                transition: 'color 0.1s, background 0.1s',
+              }}
+              onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.color = S.textMid }}
+              onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.color = S.textDim }}
+            >
+              {p.label}
+              {p.key !== 'free' && (
+                <span style={{ marginLeft: 4, fontSize: 9, color: S.textDim, fontWeight: 400 }}>
+                  {p.w}×{p.h}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* divider */}
+      <div style={{ width: 1, height: 16, background: S.border, margin: '0 10px', flexShrink: 0 }} />
+
+      {/* zoom controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+        <button onClick={onZoomOut} style={zoomBtnStyle}>−</button>
+        <button
+          onClick={onZoomReset}
+          style={{ ...zoomBtnStyle, minWidth: 42, fontSize: 10, letterSpacing: '0.03em' }}
+        >
+          {Math.round(zoom * 100)}%
+        </button>
+        <button onClick={onZoomIn} style={zoomBtnStyle}>+</button>
+      </div>
+    </div>
+  )
+}
+
+const zoomBtnStyle: React.CSSProperties = {
+  padding: '2px 6px', fontSize: 11, fontFamily: 'inherit',
+  color: 'oklch(0.38 0.005 260)',
+  background: 'transparent',
+  border: `1px solid ${S.border}`,
+  borderRadius: 2, cursor: 'pointer',
+  lineHeight: 1.4,
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function PreviewArea() {
   const { generatedHtml, isGenerating } = useWorkspaceStore()
   const [mode, setMode] = useState<LayerMode>('visual')
+  const [preset, setPreset] = useState<CanvasPreset>(CANVAS_PRESETS[0])
+  const [zoom, setZoom] = useState(1)
+
+  const handleZoomIn  = () => setZoom(z => Math.min(+(z + 0.1).toFixed(1), 3))
+  const handleZoomOut = () => setZoom(z => Math.max(+(z - 0.1).toFixed(1), 0.2))
+  const handleZoomReset = () => setZoom(1)
+
+  const isFree = preset.key === 'free'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: S.bg }}>
-      {/* toolbar */}
+      {/* row 1: layer switcher */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px',
         height: 42, flexShrink: 0,
@@ -339,31 +454,74 @@ export default function PreviewArea() {
         </span>
       </div>
 
+      {/* row 2: canvas toolbar — only shown in visual mode */}
+      {mode === 'visual' && (
+        <CanvasPresetBar
+          active={preset.key}
+          onChange={p => { setPreset(p); if (p.key === 'free') setZoom(1) }}
+          zoom={zoom}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onZoomReset={handleZoomReset}
+        />
+      )}
+
       {/* content area */}
       <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
         {mode === 'visual' && (
-          <>
-            {isGenerating && (
-              <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
-                <div style={{
-                  width: 20, height: 20, borderRadius: '50%',
-                  border: `1px solid ${S.border}`, borderTopColor: S.borderStrong,
-                  animation: 'spin 0.8s linear infinite',
-                }} />
-                <span style={{ fontSize: 11, color: S.textDim, letterSpacing: '0.04em' }}>正在生成…</span>
-              </div>
-            )}
-            {!isGenerating && !generatedHtml && (
-              <div style={{ display: 'flex', height: '100%', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <div style={{ fontSize: 28, color: S.border, fontWeight: 300 }}>✦</div>
-                <p style={{ fontSize: 13, color: S.textMid, fontWeight: 500 }}>在右侧对话框中描述你的设计任务</p>
-                <p style={{ fontSize: 11, color: S.textDim }}>AI 将生成页面并自动提取元设计空间</p>
-              </div>
-            )}
-            {!isGenerating && generatedHtml && (
-              <iframe srcDoc={generatedHtml} sandbox="allow-scripts" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} title="生成预览" />
-            )}
-          </>
+          // always show canvas container — grey bg when sized, white bg when free
+          <div style={{
+            width: '100%', height: '100%',
+            overflow: 'auto',
+            background: isFree ? S.bg : 'oklch(0.88 0.004 260)',
+            display: 'flex',
+            alignItems: isFree ? 'stretch' : 'flex-start',
+            justifyContent: isFree ? 'stretch' : 'center',
+            padding: isFree ? 0 : 32,
+          }}>
+            {/* canvas sheet */}
+            <div style={{
+              ...(isFree
+                ? { flex: 1, position: 'relative' }
+                : {
+                    width: preset.w,
+                    height: preset.h,
+                    flexShrink: 0,
+                    transform: `scale(${zoom})`,
+                    transformOrigin: 'top center',
+                    boxShadow: '0 2px 24px oklch(0.12 0.005 260 / 0.14)',
+                  }
+              ),
+              background: 'oklch(0.99 0.001 260)',
+              position: 'relative',
+            }}>
+              {isGenerating && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, background: 'oklch(0.99 0.001 260)' }}>
+                  <div style={{
+                    width: 20, height: 20, borderRadius: '50%',
+                    border: `1px solid ${S.border}`, borderTopColor: S.borderStrong,
+                    animation: 'spin 0.8s linear infinite',
+                  }} />
+                  <span style={{ fontSize: 11, color: S.textDim, letterSpacing: '0.04em' }}>正在生成…</span>
+                </div>
+              )}
+              {!isGenerating && !generatedHtml && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <div style={{ fontSize: 28, color: S.border, fontWeight: 300 }}>✦</div>
+                  <p style={{ fontSize: 13, color: S.textMid, fontWeight: 500 }}>在右侧对话框中描述你的设计任务</p>
+                  <p style={{ fontSize: 11, color: S.textDim }}>AI 将生成页面并自动提取元设计空间</p>
+                </div>
+              )}
+              {!isGenerating && generatedHtml && (
+                <iframe
+                  srcDoc={generatedHtml}
+                  sandbox="allow-scripts"
+                  style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+                  title="生成预览"
+                />
+              )}
+            </div>
+          </div>
         )}
 
         {mode === 'structure' && <StructureLayer />}

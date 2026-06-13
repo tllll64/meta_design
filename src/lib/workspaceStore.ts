@@ -64,6 +64,7 @@ interface WorkspaceState {
   isGenerating: boolean
   streamingContent: string
   newPrincipleId: string | null
+  chatPhase: 'gathering' | 'editing'
 
   updateTask: (patch: Partial<TaskContext>) => void
   updateStyle: (patch: Partial<VisualStyle>) => void
@@ -83,6 +84,7 @@ interface WorkspaceState {
   setStreamingContent: (v: string) => void
   clearNewPrincipleId: () => void
   applyExtractedMeta: (extracted: Partial<MetaDesignSpace>) => void
+  setChatPhase: (phase: 'gathering' | 'editing') => void
 }
 
 const defaultMeta: MetaDesignSpace = {
@@ -108,6 +110,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   isGenerating: false,
   streamingContent: '',
   newPrincipleId: null,
+  chatPhase: 'gathering',
 
   updateTask: (patch) =>
     set(s => ({ metaSpace: { ...s.metaSpace, task: { ...s.metaSpace.task, ...patch } } })),
@@ -198,6 +201,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   setIsGenerating: (v) => set({ isGenerating: v }),
   setStreamingContent: (v) => set({ streamingContent: v }),
   clearNewPrincipleId: () => set({ newPrincipleId: null }),
+
+  setChatPhase: (phase) => set({ chatPhase: phase }),
 
   applyExtractedMeta: (extracted) =>
     set(s => ({

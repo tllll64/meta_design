@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express'
+import Anthropic from '@anthropic-ai/sdk'
 import { getClient, model } from '../lib/ai.js'
 import { AppError, success } from '../lib/http.js'
 import type { MetaDesignSpace } from '../lib/types.js'
@@ -7,27 +8,20 @@ const router = Router()
 
 function buildGeneratePrompt(prompt: string, meta: MetaDesignSpace): string {
   const parts: string[] = []
-
   parts.push(`你是一个专业的信息设计师。请根据以下任务需求，生成一个完整的、可直接在浏览器运行的单页 HTML 文件。`)
   parts.push(`\n## 任务描述\n${prompt}`)
 
   if (meta.task.goal) parts.push(`\n## 任务目标\n- 受众：${meta.task.audience || '未指定'}\n- 场景：${meta.task.goal}\n- 渠道：${meta.task.channel || '未指定'}\n- 约束：${meta.task.constraints || '无'}`)
-
   if (meta.style.keywords.length > 0) parts.push(`\n## 视觉风格\n- 关键词：${meta.style.keywords.join('、')}\n- 主视觉方向：${meta.style.colorDirection || '未指定'}`)
-
   if (meta.principles.length > 0) {
     parts.push(`\n## 设计原则（必须严格遵守）`)
     meta.principles.forEach((p, i) => parts.push(`${i + 1}. ${p.content}`))
   }
-
   if (meta.modules.length > 0) {
     parts.push(`\n## 结构要求`)
-    meta.modules
-      .sort((a, b) => a.order - b.order)
-      .forEach(m => {
-        const locked = m.locked ? '（锁定，不可修改）' : ''
-        parts.push(`- 模块「${m.label}」${locked}`)
-      })
+    meta.modules.sort((a, b) => a.order - b.order).forEach(m => {
+      parts.push(`- 模块「${m.label}」${m.locked ? '（锁定，不可修改）' : ''}`)
+    })
   }
 
   parts.push(`\n## 输出要求
@@ -36,7 +30,6 @@ function buildGeneratePrompt(prompt: string, meta: MetaDesignSpace): string {
 - 图片使用合理的占位颜色块替代，不使用外部图片 URL
 - 页面宽度适配 800px 左右的预览区域
 - 代码只输出 HTML，不要任何解释或 markdown 包裹`)
-
   return parts.join('\n')
 }
 
@@ -87,9 +80,7 @@ ${html.slice(0, 8000)}
 router.post('/generate', async (req: Request, res: Response): Promise<void> => {
   const { prompt, metaSpace } = req.body as { prompt: string; metaSpace: MetaDesignSpace }
 
-  if (!prompt) {
-    throw new AppError('prompt is required', { statusCode: 400, code: 'MISSING_PROMPT' })
-  }
+  if (!prompt) throw new AppError('prompt is required', { statusCode: 400, code: 'MISSING_PROMPT' })
 
   const meta: MetaDesignSpace = metaSpace || {
     task: { goal: '', audience: '', channel: '', constraints: '' },
@@ -98,35 +89,34 @@ router.post('/generate', async (req: Request, res: Response): Promise<void> => {
     modules: [],
   }
 
-  const generatePrompt = buildGeneratePrompt(prompt, meta)
+  const client = getClient()
 
-  const generateResponse = await getClient().chat.completions.create({
+  const generateResponse = await client.messages.create({
     model,
-    messages: [{ role: 'user', content: generatePrompt }],
     max_tokens: 4096,
+    messages: [{ role: 'user', content: buildGeneratePrompt(prompt, meta) }],
   })
 
-  const html = generateResponse.choices[0]?.message?.content || ''
-
-  // strip markdown code fences if present
+  const html = generateResponse.content
+    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+    .map(b => b.text)
+    .join('')
   const cleanHtml = html.replace(/^```html\n?/i, '').replace(/\n?```$/i, '').trim()
 
-  // extract meta design space from generated HTML
   let extractedMeta: Partial<MetaDesignSpace> = {}
   try {
-    const extractResponse = await getClient().chat.completions.create({
+    const extractResponse = await client.messages.create({
       model,
-      messages: [{ role: 'user', content: buildExtractionPrompt(cleanHtml) }],
       max_tokens: 2048,
+      messages: [{ role: 'user', content: buildExtractionPrompt(cleanHtml) }],
     })
-    const extractText = extractResponse.choices[0]?.message?.content || '{}'
+    const extractText = extractResponse.content
+      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+      .map(b => b.text)
+      .join('')
     const jsonMatch = extractText.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      extractedMeta = JSON.parse(jsonMatch[0])
-    }
-  } catch {
-    // extraction failure is non-fatal
-  }
+    if (jsonMatch) extractedMeta = JSON.parse(jsonMatch[0])
+  } catch { /* extraction failure is non-fatal */ }
 
   res.json(success({ html: cleanHtml, extractedMeta }))
 })

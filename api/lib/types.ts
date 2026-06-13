@@ -47,4 +47,5 @@ export interface MetaDesignSpace {
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
+  isSystemAction?: boolean
 }
