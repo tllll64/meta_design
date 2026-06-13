@@ -28,6 +28,8 @@
   参与者逐字稿与整理版记录。
 - [Formative Study/Synthesis](/Users/xiaoshizi/Documents/trae_projects/meta_design/Formative%20Study/Synthesis)
   `RQ1/RQ2/RQ3` 结论整理与综合结果。
+- [Related Work](/Users/xiaoshizi/Documents/trae_projects/meta_design/Related%20Work)
+  文献研究、相关工作整理与阅读笔记。
 
 ### 前端设计
 

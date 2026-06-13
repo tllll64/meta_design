@@ -21,7 +21,7 @@
 
 - 常做信息类设计：海报 / 信息图 / PPT / 社媒宣发物料（如小红书）等
 - 工作流里经常用 AI：大模型（如 ChatGPT / Claude / Gemini / 豆包等）、AI Coding 工具（如 Codex / Claude Code / Cursor / Trae 等）、AI 辅助设计工具（如 Figma Make / Canva AI 等）、Design Skills（如 guizang-ppt-skill / guizang-social-card-skill / impeccable / ui-ux-pro-max 等）
-- 愿意分享你在“表达设计意图、控制 AI 生成结构与风格”上的真实体验（经验也好，吐槽也罢）
+- 愿意分享你在“构建元设计空间、控制 AI 生成结构与风格”上的真实体验（经验也好，吐槽也罢）
 
 <br />
 
