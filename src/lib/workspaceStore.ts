@@ -97,6 +97,9 @@ interface WorkspaceState {
   setChatPhase: (phase: 'gathering' | 'editing') => void
   restoreVersion: (id: string) => void
   updateHtmlContent: (html: string) => void
+  currentProjectId: string | null
+  loadForProject: (projectId: string) => void
+  resetWorkspace: () => void
 }
 
 const defaultMeta: MetaDesignSpace = {
@@ -115,27 +118,44 @@ const nextPrincipleId = () => `principle-${++_principleId}`
 let _versionId = 0
 const nextVersionId = () => `v${++_versionId}`
 
-const LS_KEY = 'meta_design_versions'
+const LS_VERSIONS = (id: string) => `meta_design_versions_${id}`
+const LS_WORKSPACE = (id: string) => `meta_design_workspace_${id}`
 
-function loadVersionsFromStorage(): DesignVersion[] {
+function loadVersions(projectId: string): DesignVersion[] {
   try {
-    const raw = localStorage.getItem(LS_KEY)
+    const raw = localStorage.getItem(LS_VERSIONS(projectId))
     return raw ? (JSON.parse(raw) as DesignVersion[]) : []
   } catch { return [] }
 }
 
-function saveVersionsToStorage(versions: DesignVersion[]) {
+function saveVersions(projectId: string, versions: DesignVersion[]) {
   try {
-    // keep max 20 versions, drop oldest
-    const trimmed = versions.slice(-20)
-    localStorage.setItem(LS_KEY, JSON.stringify(trimmed))
-  } catch { /* storage full – skip */ }
+    localStorage.setItem(LS_VERSIONS(projectId), JSON.stringify(versions.slice(-20)))
+  } catch { }
+}
+
+interface WorkspaceSnapshot {
+  metaSpace: MetaDesignSpace
+  generatedHtml: string | null
+  activeVersionId: string | null
+  chatPhase: 'gathering' | 'editing'
+}
+
+function loadSnapshot(projectId: string): WorkspaceSnapshot | null {
+  try {
+    const raw = localStorage.getItem(LS_WORKSPACE(projectId))
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+
+function saveSnapshot(projectId: string, snap: WorkspaceSnapshot) {
+  try { localStorage.setItem(LS_WORKSPACE(projectId), JSON.stringify(snap)) } catch { }
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   metaSpace: defaultMeta,
   generatedHtml: null,
-  versions: loadVersionsFromStorage(),
+  versions: [],
   activeVersionId: null,
   skeletonOpacity: 0,
   selectedObjectId: null,
@@ -145,6 +165,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   streamingContent: '',
   newPrincipleId: null,
   chatPhase: 'gathering',
+  currentProjectId: null,
 
   updateTask: (patch) =>
     set(s => ({ metaSpace: { ...s.metaSpace, task: { ...s.metaSpace.task, ...patch } } })),
@@ -228,6 +249,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   setGeneratedHtml: (html) => {
     const state = get()
+    const pid = state.currentProjectId
     const versionNumber = state.versions.length + 1
     const newVersion: DesignVersion = {
       id: nextVersionId(),
@@ -237,8 +259,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       taskGoal: state.metaSpace.task.goal || '无标题',
     }
     const updated = [...state.versions, newVersion]
-    saveVersionsToStorage(updated)
-    set({ generatedHtml: html, versions: updated, activeVersionId: newVersion.id })
+    if (pid) saveVersions(pid, updated)
+    const nextState = { generatedHtml: html, versions: updated, activeVersionId: newVersion.id }
+    if (pid) saveSnapshot(pid, { metaSpace: state.metaSpace, generatedHtml: html, activeVersionId: newVersion.id, chatPhase: state.chatPhase })
+    set(nextState)
   },
 
   restoreVersion: (id) => {
@@ -247,6 +271,40 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   updateHtmlContent: (html) => set({ generatedHtml: html }),
+
+  loadForProject: (projectId) => {
+    const versions = loadVersions(projectId)
+    const snap = loadSnapshot(projectId)
+    set({
+      currentProjectId: projectId,
+      versions,
+      metaSpace: snap?.metaSpace ?? defaultMeta,
+      generatedHtml: snap?.generatedHtml ?? null,
+      activeVersionId: snap?.activeVersionId ?? null,
+      chatPhase: snap?.chatPhase ?? 'gathering',
+      messages: [],
+      isGenerating: false,
+      streamingContent: '',
+      newPrincipleId: null,
+      selectedObjectId: null,
+      selectedModuleId: null,
+    })
+  },
+
+  resetWorkspace: () => set({
+    currentProjectId: null,
+    metaSpace: defaultMeta,
+    generatedHtml: null,
+    versions: [],
+    activeVersionId: null,
+    messages: [],
+    isGenerating: false,
+    streamingContent: '',
+    newPrincipleId: null,
+    chatPhase: 'gathering',
+    selectedObjectId: null,
+    selectedModuleId: null,
+  }),
 
   setSkeletonFromExtraction: (modules) =>
     set(s => ({ metaSpace: { ...s.metaSpace, modules } })),

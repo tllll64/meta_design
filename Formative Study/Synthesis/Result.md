@@ -50,7 +50,7 @@
 | P5 | 29 | 女 | 全职 | UX / UI | PPT、社媒、产品 demo、工作汇报、客户提案 | LLM、Coding、Doc AI、AIGC | Claude Code | 几乎每天 | AI 先出框架 |
 | P6 | 24 | 女 | 学生 | 视觉/营销设计 | 海报、社媒、活动物料、学术、工作、营销 | LLM、Coding、Design AI、Doc AI、AIGC | CatPaw | 几乎每天 | 规则后生成 |
 | P7 | 26 | 女 | 全职 | UX / UI | 信息图、产品界面、工作汇报 | LLM、Coding | Codex、Cursor | 几乎每天 | 规则后生成 |
-| P8 | 23 | 男 | 学生 | 数据可视化 | PPT、学术、工作、数据报告 | LLM、Coding、AIGC | 待定 | 几乎每天 | 探索中 |
+| P8 | 23 | 男 | 学生 | 数据可视化 | PPT、学术、工作、数据报告 | LLM、Coding、AIGC | ChatGPT / Codex | 几乎每天 | 探索中 |
 
 <br />
 
