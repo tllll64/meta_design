@@ -178,14 +178,13 @@ function CanvasPresetBar({ active, onChange, zoom, onZoomIn, onZoomOut, onZoomRe
 
 // ─── Structure Overlay ────────────────────────────────────────────────────────
 
-const MOD_BG = [
-  'oklch(0.93 0.025 240 / 0.72)', 'oklch(0.93 0.025 55 / 0.72)',
-  'oklch(0.93 0.025 150 / 0.72)', 'oklch(0.93 0.025 310 / 0.72)',
-  'oklch(0.93 0.025 25 / 0.72)',  'oklch(0.93 0.025 200 / 0.72)',
-]
-const MOD_BORDER = [
-  'oklch(0.58 0.09 240)', 'oklch(0.58 0.14 55)', 'oklch(0.58 0.10 150)',
-  'oklch(0.58 0.10 310)', 'oklch(0.58 0.10 25)', 'oklch(0.58 0.09 200)',
+const MOD_PALETTE = [
+  { bg: 'oklch(0.94 0.04 240 / 0.55)', border: 'oklch(0.55 0.16 240)', text: 'oklch(0.40 0.16 240)' },
+  { bg: 'oklch(0.94 0.05 150 / 0.55)', border: 'oklch(0.52 0.16 150)', text: 'oklch(0.38 0.16 150)' },
+  { bg: 'oklch(0.94 0.04 300 / 0.55)', border: 'oklch(0.52 0.18 300)', text: 'oklch(0.40 0.18 300)' },
+  { bg: 'oklch(0.95 0.05 55  / 0.55)', border: 'oklch(0.58 0.18 55)',  text: 'oklch(0.44 0.18 55)'  },
+  { bg: 'oklch(0.95 0.04 25  / 0.55)', border: 'oklch(0.55 0.18 25)',  text: 'oklch(0.42 0.18 25)'  },
+  { bg: 'oklch(0.93 0.004 260/ 0.55)', border: 'oklch(0.50 0.006 260)', text: 'oklch(0.38 0.006 260)' },
 ]
 
 function StructureOverlay({ blocks }: { blocks: LiveBlock[] }) {
@@ -197,34 +196,39 @@ function StructureOverlay({ blocks }: { blocks: LiveBlock[] }) {
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
-      {blocks.map((block, i) => (
-        <div key={i} style={{
-          position: 'absolute',
-          left: block.x, top: block.y, width: block.w, height: block.h,
-          background: MOD_BG[i % MOD_BG.length],
-          border: `1.5px solid ${MOD_BORDER[i % MOD_BORDER.length]}`,
-          boxSizing: 'border-box',
-          pointerEvents: 'none',
-        }}>
-          <div style={{
-            position: 'absolute', top: 0, left: 0,
-            padding: '2px 8px', fontSize: 10, fontWeight: 600,
-            background: MOD_BORDER[i % MOD_BORDER.length],
-            color: 'oklch(0.99 0.001 260)',
-            letterSpacing: '0.03em',
-            maxWidth: '80%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      {blocks.map((block, i) => {
+        const pal = MOD_PALETTE[i % MOD_PALETTE.length]
+        return (
+          <div key={i} style={{
+            position: 'absolute',
+            left: block.x, top: block.y, width: block.w, height: block.h,
+            background: pal.bg,
+            border: `1.5px dashed ${pal.border}`,
+            borderRadius: 8,
+            boxSizing: 'border-box',
+            pointerEvents: 'none',
           }}>
-            {block.label}
+            {/* floating label pill sitting on the top-left border edge */}
+            <div style={{
+              position: 'absolute',
+              top: -11, left: 12,
+              padding: '1px 8px',
+              fontSize: 10, fontWeight: 600,
+              letterSpacing: '0.03em',
+              color: pal.text,
+              background: 'oklch(0.99 0.001 260)',
+              border: `1.5px dashed ${pal.border}`,
+              borderRadius: 20,
+              whiteSpace: 'nowrap',
+              maxWidth: block.w - 24,
+              overflow: 'hidden', textOverflow: 'ellipsis',
+              lineHeight: '18px',
+            }}>
+              {block.label}
+            </div>
           </div>
-          <div style={{
-            position: 'absolute', bottom: 4, right: 8,
-            fontSize: 9, color: MOD_BORDER[i % MOD_BORDER.length],
-            fontWeight: 500, opacity: 0.7,
-          }}>
-            {Math.round(block.w)} × {Math.round(block.h)}
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
