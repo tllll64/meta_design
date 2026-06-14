@@ -26,6 +26,8 @@ const MEASURE_SCRIPT = `<script>
 (function(){
   function run(){
     var dw=document.body.scrollWidth;
+    var dh=document.body.scrollHeight;
+    var pageArea=dw*dh;
     var blocks=[],seen=new Set();
     var cands=Array.from(document.querySelectorAll('header,footer,nav,main,section,article,aside'));
     Array.from(document.body.children).forEach(function(el){
@@ -42,8 +44,18 @@ const MEASURE_SCRIPT = `<script>
       if(seen.has(el))return;seen.add(el);
       var r=el.getBoundingClientRect();
       if(r.width<80||r.height<40)return;
+      // skip elements that start outside the left/right canvas edge
+      if(r.left<-4||r.right>dw+4)return;
+      // skip pure background containers (>85% page area and no direct text)
+      if(r.width*r.height>pageArea*0.85)return;
       var cs=window.getComputedStyle(el);
       if(cs.display==='none'||cs.visibility==='hidden')return;
+      // skip decorative elements: no text content, has gradient/image background
+      var txt=(el.textContent||'').replace(/\\s+/g,'').length;
+      if(txt<3){
+        var bg=cs.background+cs.backgroundImage;
+        if(bg.indexOf('gradient')>=0||bg.indexOf('url(')>=0)return;
+      }
       var contained=blocks.some(function(b){return b.x<=r.left&&b.y<=r.top&&b.x+b.w>=r.right&&b.y+b.h>=r.bottom;});
       if(contained)return;
       var label=el.tagName.toLowerCase();
